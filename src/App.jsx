@@ -289,6 +289,15 @@ export default function App() {
               apiKey={apiKey} 
               setApiKey={setApiKey} 
               onImportCampaigns={handleImportCampaigns} 
+              onResetCampaigns={() => {
+                localStorage.removeItem('omnipulse_campaigns');
+                const loaded = loadCampaigns();
+                setCampaigns(loaded);
+                if (loaded.length > 0) {
+                  setActiveCampaignId(loaded[0].id);
+                }
+                triggerToast("Workspace reset to default campaign seeds!");
+              }}
             />
           </div>
         )}

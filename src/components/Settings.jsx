@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { parseCsvCampaignLog, fetchBrazeCampaignStats } from '../services/dataStore';
 
-export default function Settings({ apiKey, setApiKey, onImportCampaigns }) {
+export default function Settings({ apiKey, setApiKey, onImportCampaigns, onResetCampaigns }) {
   const [showKey, setShowKey] = useState(false);
   const [showBrazeKey, setShowBrazeKey] = useState(false);
   const [showGa4Secret, setShowGa4Secret] = useState(false);
@@ -452,6 +452,27 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns }) {
             <span>{csvSuccess}</span>
           </div>
         )}
+      </div>
+
+      {/* 4. Danger Zone / Reset Workspace Panel */}
+      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+        <h3 style={{ fontSize: '1.05rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--error)' }}>
+          <ShieldAlert size={16} />
+          Danger Zone
+        </h3>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          Reset your workspace campaigns list back to the default campaign seeds. This will reload the new campaign data structured with Google Analytics stats and clear any imported custom performance logs.
+        </p>
+        <div>
+          <button
+            type="button"
+            onClick={onResetCampaigns}
+            className="btn btn-secondary"
+            style={{ color: 'var(--error)', borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'rgba(239, 68, 68, 0.03)' }}
+          >
+            Reset Workspace Campaigns
+          </button>
+        </div>
       </div>
 
     </div>
