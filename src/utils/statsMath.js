@@ -9,8 +9,18 @@ function normalCDF(z) {
 
 // Compute A/B test statistics using a two-proportion Z-test
 export const calculateABStats = (variants) => {
+  if (!variants || !variants.a || !variants.b) {
+    return {
+      pValue: 0.5,
+      confidence: 0,
+      isSignificant: false,
+      lift: 0,
+      confidenceInterval: [0, 0],
+      winner: 'Draw'
+    };
+  }
   const { a, b } = variants;
-  if (!a || !b || a.sent === 0 || b.sent === 0) {
+  if (a.sent === 0 || b.sent === 0) {
     return {
       pValue: 0.5,
       confidence: 0,

@@ -713,12 +713,13 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
               { label: '5. Segment Conversions', val: activeStats.conversions, pct: ((activeStats.conversions / activeStats.clicks) * 100).toFixed(1) }
             ].map((stage, idx, arr) => {
               const widthRatio = 100 - idx * 8;
+              const safeVal = stage.val !== undefined && stage.val !== null ? stage.val : 0;
               return (
                 <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', padding: '0 0.25rem' }}>
                     <span style={{ fontWeight: '600' }}>{stage.label}</span>
                     <span style={{ color: 'var(--text-secondary)' }}>
-                      {stage.val.toLocaleString()} &bull; <strong style={{ color: 'var(--text-primary)' }}>{stage.pct}%</strong>
+                      {safeVal.toLocaleString()} &bull; <strong style={{ color: 'var(--text-primary)' }}>{stage.pct}%</strong>
                       {idx > 0 ? ` conversion` : ' target'}
                     </span>
                   </div>
@@ -757,7 +758,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
               <div style={{ padding: '0.85rem', backgroundColor: 'rgba(16, 185, 129, 0.04)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>GROSS CAMPAIGN REVENUE</div>
                 <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--success)', marginTop: '0.2rem' }}>
-                  +${revenueGenerated.toLocaleString()}
+                  +${(revenueGenerated || 0).toLocaleString()}
                 </div>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Based on AOV of ${averageOrderValue}</div>
               </div>
@@ -765,7 +766,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
               <div style={{ padding: '0.85rem', backgroundColor: 'rgba(239, 68, 68, 0.04)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>UNSUBSCRIBE VALUE CHURN</div>
                 <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--error)', marginTop: '0.2rem' }}>
-                  -${unsubLoss.toLocaleString()}
+                  -${(unsubLoss || 0).toLocaleString()}
                 </div>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Based on CLV of ${customerLifetimeValue}</div>
               </div>
@@ -775,15 +776,15 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
               <div style={{ padding: '0.85rem', backgroundColor: 'rgba(239, 68, 68, 0.04)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>BOUNCE DELIV CHURN</div>
                 <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--error)', marginTop: '0.2rem' }}>
-                  -${bounceLoss.toLocaleString()}
+                  -${(bounceLoss || 0).toLocaleString()}
                 </div>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Based on CLV of ${customerLifetimeValue}</div>
               </div>
 
-              <div style={{ padding: '0.85rem', backgroundColor: netValue >= 0 ? 'rgba(16, 185, 129, 0.06)' : 'rgba(239, 68, 68, 0.06)', borderRadius: '8px', border: `1px solid ${netValue >= 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}` }}>
+              <div style={{ padding: '0.85rem', backgroundColor: (netValue || 0) >= 0 ? 'rgba(16, 185, 129, 0.06)' : 'rgba(239, 68, 68, 0.06)', borderRadius: '8px', border: `1px solid ${(netValue || 0) >= 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}` }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>NET MARKETING VALUE</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: '800', color: netValue >= 0 ? 'var(--success)' : 'var(--error)', marginTop: '0.2rem' }}>
-                  {netValue >= 0 ? `+$${netValue.toLocaleString()}` : `-$${Math.abs(netValue).toLocaleString()}`}
+                <div style={{ fontSize: '1.3rem', fontWeight: '800', color: (netValue || 0) >= 0 ? 'var(--success)' : 'var(--error)', marginTop: '0.2rem' }}>
+                  {(netValue || 0) >= 0 ? `+$${(netValue || 0).toLocaleString()}` : `-$${Math.abs(netValue || 0).toLocaleString()}`}
                 </div>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Net Value Yield Ledger</div>
               </div>

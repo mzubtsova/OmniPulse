@@ -248,7 +248,10 @@ export const loadCampaigns = () => {
   const custom = localStorage.getItem('omnipulse_campaigns');
   if (custom) {
     try {
-      return JSON.parse(custom);
+      const parsed = JSON.parse(custom);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
     } catch {
       return SEED_CAMPAIGNS;
     }
@@ -456,7 +459,10 @@ export const loadSavedReports = () => {
   const data = localStorage.getItem('omnipulse_saved_reports');
   if (data) {
     try {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
     } catch {
       return [];
     }
