@@ -13,6 +13,17 @@ export const SEED_CAMPAIGNS = [
     conversions: 7710, // 5% Conversion Rate
     unsubscribes: 308, // 0.2%
     bounces: 154, // 0.1%
+    gaStats: {
+      sessions: 16450,
+      bounceRate: 38.4,
+      duration: 132,
+      loadTime: 1.9,
+      purchases: 7520,
+      deviceSplit: {
+        mobile: { bounceRate: 42.1, duration: 118, loadTime: 2.4 },
+        desktop: { bounceRate: 32.5, duration: 156, loadTime: 1.1 }
+      }
+    },
     subjectLine: 'Get a FREE Blizzard Ice Cream! 🍦 Alert',
     templateHtml: `<!DOCTYPE html>
 <html>
@@ -87,6 +98,17 @@ export const SEED_CAMPAIGNS = [
     conversions: 6400, // 2%
     unsubscribes: 1280, // 0.4% opt-outs
     bounces: 640, // 0.2% failed pushes
+    gaStats: {
+      sessions: 15200,
+      bounceRate: 52.8,
+      duration: 88,
+      loadTime: 1.6,
+      purchases: 6250,
+      deviceSplit: {
+        mobile: { bounceRate: 54.1, duration: 82, loadTime: 1.7 },
+        desktop: { bounceRate: 42.0, duration: 125, loadTime: 1.1 }
+      }
+    },
     subjectLine: 'Summer Blizzard Points Blast!',
     pushBody: 'Get double points on all Blizzards today! 🍦 Open the app to check your loyalty tier.',
     templateHtml: '',
@@ -119,6 +141,17 @@ export const SEED_CAMPAIGNS = [
     conversions: 11050, // 13% App conversion rate
     unsubscribes: 425, // 0.5% Dismissals / opt-outs
     bounces: 0,
+    gaStats: {
+      sessions: 21800,
+      bounceRate: 26.5,
+      duration: 210,
+      loadTime: 1.3,
+      purchases: 10880,
+      deviceSplit: {
+        mobile: { bounceRate: 28.2, duration: 195, loadTime: 1.4 },
+        desktop: { bounceRate: 21.0, duration: 250, loadTime: 0.9 }
+      }
+    },
     subjectLine: 'Get rewards in the Dairy Queen App',
     iamHeader: 'Get the App',
     iamBody: 'Receive rewards on your birthday, unlock point multipliers, and get quick ordering.',
@@ -155,6 +188,17 @@ export const SEED_CAMPAIGNS = [
     conversions: 22400,
     unsubscribes: 1840,
     bounces: 1920,
+    gaStats: {
+      sessions: 52500,
+      bounceRate: 44.2,
+      duration: 120,
+      loadTime: 1.8,
+      purchases: 21850,
+      deviceSplit: {
+        mobile: { bounceRate: 48.0, duration: 105, loadTime: 2.1 },
+        desktop: { bounceRate: 36.5, duration: 150, loadTime: 1.2 }
+      }
+    },
     subjectLine: 'Summer is HERE: Free Blizzard Day! 🍦',
     channelStats: {
       email: {
@@ -164,6 +208,17 @@ export const SEED_CAMPAIGNS = [
         conversions: 16000,
         unsubscribes: 800,
         bounces: 400,
+        gaStats: {
+          sessions: 42800,
+          bounceRate: 39.5,
+          duration: 138,
+          loadTime: 1.9,
+          purchases: 15650,
+          deviceSplit: {
+            mobile: { bounceRate: 43.0, duration: 122, loadTime: 2.3 },
+            desktop: { bounceRate: 33.5, duration: 165, loadTime: 1.2 }
+          }
+        },
         subjectLine: 'Summer is HERE: Free Blizzard Day! 🍦',
         templateHtml: `<!DOCTYPE html>
 <html>
@@ -211,6 +266,17 @@ export const SEED_CAMPAIGNS = [
         conversions: 4800,
         unsubscribes: 400,
         bounces: 1200,
+        gaStats: {
+          sessions: 7500,
+          bounceRate: 54.0,
+          duration: 85,
+          loadTime: 1.5,
+          purchases: 4680,
+          deviceSplit: {
+            mobile: { bounceRate: 55.0, duration: 80, loadTime: 1.6 },
+            desktop: { bounceRate: 44.5, duration: 120, loadTime: 1.0 }
+          }
+        },
         subjectLine: 'Get a free Blizzard today only! 🍦',
         pushBody: 'Beat the heat with a free small Blizzard on us. Tap to load reward in app.'
       },
@@ -221,6 +287,17 @@ export const SEED_CAMPAIGNS = [
         conversions: 1600,
         unsubscribes: 640,
         bounces: 320,
+        gaStats: {
+          sessions: 2200,
+          bounceRate: 62.0,
+          duration: 60,
+          loadTime: 2.1,
+          purchases: 1520,
+          deviceSplit: {
+            mobile: { bounceRate: 63.0, duration: 55, loadTime: 2.2 },
+            desktop: { bounceRate: 52.0, duration: 90, loadTime: 1.4 }
+          }
+        },
         smsBody: 'Dairy Queen: Summer is here! Click to claim your FREE small Blizzard now: dq.com/s-free (Reply STOP to unsub)'
       }
     },
@@ -250,7 +327,8 @@ export const loadCampaigns = () => {
     try {
       const parsed = JSON.parse(custom);
       if (Array.isArray(parsed)) {
-        return parsed;
+        const filtered = parsed.filter(c => c && typeof c === 'object' && c.id);
+        return filtered.length > 0 ? filtered : SEED_CAMPAIGNS;
       }
     } catch {
       return SEED_CAMPAIGNS;
@@ -280,6 +358,17 @@ export const fetchBrazeCampaignStats = async (campaignId, endpoint, apiKey) => {
       conversions: 8750, // 3.5% Conversion Rate
       unsubscribes: 500,
       bounces: 250,
+      gaStats: {
+        sessions: 18200,
+        bounceRate: 40.5,
+        duration: 125,
+        loadTime: 1.8,
+        purchases: 8500,
+        deviceSplit: {
+          mobile: { bounceRate: 44.5, duration: 110, loadTime: 2.2 },
+          desktop: { bounceRate: 34.0, duration: 145, loadTime: 1.2 }
+        }
+      },
       subjectLine: 'Exclusive App Rewards Await! ⚡',
       templateHtml: `<!DOCTYPE html>
 <html>
@@ -335,6 +424,9 @@ export const fetchBrazeCampaignStats = async (campaignId, endpoint, apiKey) => {
     const unsubscribes = data.unsubscribes || Math.round(sent * 0.002);
     const bounces = data.bounces || Math.round(sent * 0.001);
 
+    const gaSessions = Math.round(clicks * 0.97);
+    const gaPurchases = Math.round(conversions * 0.98);
+
     return {
       id: campaignId,
       name,
@@ -348,6 +440,17 @@ export const fetchBrazeCampaignStats = async (campaignId, endpoint, apiKey) => {
       conversions,
       unsubscribes,
       bounces,
+      gaStats: {
+        sessions: gaSessions,
+        bounceRate: 39.2,
+        duration: 130,
+        loadTime: 1.9,
+        purchases: gaPurchases,
+        deviceSplit: {
+          mobile: { bounceRate: 43.1, duration: 115, loadTime: 2.3 },
+          desktop: { bounceRate: 33.2, duration: 160, loadTime: 1.1 }
+        }
+      },
       subjectLine: 'Synced Braze Email Subject',
       templateHtml: `<!DOCTYPE html>
 <html>
@@ -407,6 +510,9 @@ export const parseCsvCampaignLog = (csvText) => {
     const unsubscribes = getColIndex('unsubscribes') !== -1 ? parseInt(cols[getColIndex('unsubscribes')]) || 0 : Math.round(sent * 0.002);
     const bounces = getColIndex('bounces') !== -1 ? parseInt(cols[getColIndex('bounces')]) || 0 : Math.round(sent * 0.001);
     
+    const gaSessions = Math.round(clicks * 0.96);
+    const gaPurchases = Math.round(conversions * 0.97);
+    
     const channel = (cols[getColIndex('channel')] || 'email').toLowerCase().trim();
     const name = cols[getColIndex('name')] || `Imported Campaign #${idx + 1}`;
     
@@ -423,6 +529,17 @@ export const parseCsvCampaignLog = (csvText) => {
       conversions,
       unsubscribes,
       bounces,
+      gaStats: {
+        sessions: gaSessions,
+        bounceRate: 41.5,
+        duration: 110,
+        loadTime: 2.1,
+        purchases: gaPurchases,
+        deviceSplit: {
+          mobile: { bounceRate: 46.2, duration: 95, loadTime: 2.5 },
+          desktop: { bounceRate: 35.0, duration: 140, loadTime: 1.3 }
+        }
+      },
       subjectLine: cols[getColIndex('subject')] || 'Simulated Imported Campaign',
       templateHtml: `<!DOCTYPE html>
 <html>

@@ -103,6 +103,78 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       }
     : campaign;
 
+  const ga = activeStats.gaStats || {
+    sessions: 0,
+    bounceRate: 0,
+    duration: 0,
+    loadTime: 0,
+    purchases: 0,
+    deviceSplit: {
+      mobile: { bounceRate: 0, duration: 0, loadTime: 0 },
+      desktop: { bounceRate: 0, duration: 0, loadTime: 0 }
+    }
+  };
+
+  const deviceSplit = ga.deviceSplit || {
+    mobile: { bounceRate: 0, duration: 0, loadTime: 0 },
+    desktop: { bounceRate: 0, duration: 0, loadTime: 0 }
+  };
+  const mobileStats = deviceSplit.mobile || { bounceRate: 0, duration: 0, loadTime: 0 };
+  const desktopStats = deviceSplit.desktop || { bounceRate: 0, duration: 0, loadTime: 0 };
+
+  const auditUtmLinks = (html) => {
+    if (!html) return [];
+    const hrefRegex = /href="([^"]+)"/g;
+    const links = [];
+    let match;
+    while ((match = hrefRegex.exec(html)) !== null) {
+      const urlStr = match[1];
+      if (urlStr === '#' || urlStr.startsWith('#') || urlStr.startsWith('mailto:') || urlStr.startsWith('tel:') || urlStr.startsWith('javascript:')) {
+        continue;
+      }
+      const hasUtmSource = urlStr.includes('utm_source=');
+      const hasUtmMedium = urlStr.includes('utm_medium=');
+      const hasUtmCampaign = urlStr.includes('utm_campaign=');
+      const isValid = hasUtmSource && hasUtmMedium && hasUtmCampaign;
+      
+      const missing = [];
+      if (!hasUtmSource) missing.push('utm_source');
+      if (!hasUtmMedium) missing.push('utm_medium');
+      if (!hasUtmCampaign) missing.push('utm_campaign');
+      
+      links.push({
+        url: urlStr,
+        isValid,
+        missing
+      });
+    }
+    return links;
+  };
+
+  const auditedLinks = auditUtmLinks(activeStats.templateHtml);
+
+  const clickSessionDiff = activeStats.clicks > 0 
+    ? parseFloat(((Math.abs(activeStats.clicks - ga.sessions) / activeStats.clicks) * 100).toFixed(1))
+    : 0;
+
+  const convPurchaseDiff = activeStats.conversions > 0 
+    ? parseFloat(((Math.abs(activeStats.conversions - ga.purchases) / activeStats.conversions) * 100).toFixed(1))
+    : 0;
+
+  const getDiscrepancyLevel = (variance) => {
+    if (variance < 5) return 'low';
+    if (variance <= 15) return 'medium';
+    return 'high';
+  };
+
+  const getDiscrepancyColor = (level) => {
+    if (level === 'low') return 'var(--success)';
+    if (level === 'medium') return 'var(--warning)';
+    return 'var(--error)';
+  };
+
+
+
   // Local action delays
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -1109,6 +1181,197 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
 
       </div>
 
+      {/* ========================================================================= */}
+      {/* PANEL 6: GOOGLE ANALYTICS (GA4) POST-CLICK PERFORMANCE AUDIT               */}
+      {/* ========================================================================= */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
+        <h3 style={{ fontSize: '1.15rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <TrendingUp size={18} style={{ color: 'var(--accent-purple)' }} />
+          Google Analytics (GA4) Post-Click Diagnostics
+        </h3>
+        <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }}></div>
+      </div>
+
+      <div className="grid-asymmetric-2">
+        {/* Left Side: GA4 Metrics & Attribution Sync Ledger */}
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: '700', marginBottom: '0.25rem' }}>GA4 Landing Page Traffic & Conversion KPIs</h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Post-click sessions and transactions logged inside Google Analytics properties.</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+            <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>GA SESSIONS</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: '700', marginTop: '0.2rem' }}>{(ga.sessions || 0).toLocaleString()}</div>
+            </div>
+            <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>GA PURCHASES</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: '700', marginTop: '0.2rem' }}>{(ga.purchases || 0).toLocaleString()}</div>
+            </div>
+            <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>GA CONV. RATE (CVR)</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: '700', marginTop: '0.2rem', color: 'var(--success)' }}>
+                {ga.sessions > 0 ? ((ga.purchases / ga.sessions) * 100).toFixed(2) : '0.00'}%
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+            <div style={{ 
+              padding: '0.75rem', 
+              backgroundColor: 'var(--bg-tertiary)', 
+              borderRadius: '8px', 
+              border: `1px solid ${ga.bounceRate > 50 ? 'rgba(245,158,11,0.2)' : 'var(--border-color)'}` 
+            }}>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>BOUNCE RATE</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: '700', marginTop: '0.2rem', color: ga.bounceRate > 50 ? 'var(--warning)' : 'var(--text-primary)' }}>
+                {ga.bounceRate}%
+              </div>
+              {ga.bounceRate > 50 && (
+                <div style={{ fontSize: '0.55rem', color: 'var(--warning)', marginTop: '0.15rem', fontWeight: '600' }}>⚠️ High Bounce Risk</div>
+              )}
+            </div>
+            <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>AVG. DURATION</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: '700', marginTop: '0.2rem' }}>{ga.duration}s</div>
+            </div>
+            <div style={{ 
+              padding: '0.75rem', 
+              backgroundColor: 'var(--bg-tertiary)', 
+              borderRadius: '8px', 
+              border: `1px solid ${ga.loadTime > 2.0 ? 'rgba(239,68,68,0.2)' : 'var(--border-color)'}` 
+            }}>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>PAGE LOAD TIME</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: '700', marginTop: '0.2rem', color: ga.loadTime > 2.0 ? 'var(--error)' : 'var(--text-primary)' }}>
+                {ga.loadTime}s
+              </div>
+              {ga.loadTime > 2.0 && (
+                <div style={{ fontSize: '0.55rem', color: 'var(--error)', marginTop: '0.15rem', fontWeight: '600' }}>⚠️ Slow Speed Warning</div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '1rem' }}>
+            <h4 style={{ fontSize: '0.82rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.75rem', letterSpacing: '0.03em' }}>
+              CRM vs GA4 Attribution Sync Ledger
+            </h4>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {/* Traffic comparison */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                  <span>CRM Clicks vs. GA4 Sessions (Click-to-Landing drop-off)</span>
+                  <span style={{ fontWeight: '600' }}>
+                    {activeStats.clicks?.toLocaleString()} vs {ga.sessions?.toLocaleString()} 
+                    <strong style={{ color: getDiscrepancyColor(getDiscrepancyLevel(clickSessionDiff)), marginLeft: '0.4rem' }}>
+                      ({clickSessionDiff}% Variance)
+                    </strong>
+                  </span>
+                </div>
+                <div className="discrepancy-bar-container">
+                  <div 
+                    className={`discrepancy-bar ${getDiscrepancyLevel(clickSessionDiff)}`} 
+                    style={{ width: `${Math.min(100, Math.max(5, clickSessionDiff * 3))}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Conversion comparison */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                  <span>CRM Conversions vs. GA4 Purchases (Attribution sync loss)</span>
+                  <span style={{ fontWeight: '600' }}>
+                    {activeStats.conversions?.toLocaleString()} vs {ga.purchases?.toLocaleString()}
+                    <strong style={{ color: getDiscrepancyColor(getDiscrepancyLevel(convPurchaseDiff)), marginLeft: '0.4rem' }}>
+                      ({convPurchaseDiff}% Variance)
+                    </strong>
+                  </span>
+                </div>
+                <div className="discrepancy-bar-container">
+                  <div 
+                    className={`discrepancy-bar ${getDiscrepancyLevel(convPurchaseDiff)}`} 
+                    style={{ width: `${Math.min(100, Math.max(5, convPurchaseDiff * 3))}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Device Splits & UTM Links */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          {/* Device Splits */}
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: '700' }}>Mobile vs. Desktop Diagnostics</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="audit-table">
+                <thead>
+                  <tr>
+                    <th>Device</th>
+                    <th style={{ textAlign: 'right' }}>Bounce Rate</th>
+                    <th style={{ textAlign: 'right' }}>Avg Duration</th>
+                    <th style={{ textAlign: 'right' }}>Page Load</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: '600' }}>
+                      <Smartphone size={14} style={{ color: 'var(--accent-cyan)' }} /> Mobile
+                    </td>
+                    <td style={{ textAlign: 'right', color: mobileStats.bounceRate > 50 ? 'var(--warning)' : 'var(--text-primary)' }}>{mobileStats.bounceRate}%</td>
+                    <td style={{ textAlign: 'right' }}>{mobileStats.duration}s</td>
+                    <td style={{ textAlign: 'right', color: mobileStats.loadTime > 2.0 ? 'var(--error)' : 'var(--text-primary)' }}>{mobileStats.loadTime}s</td>
+                  </tr>
+                  <tr>
+                    <td style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: '600' }}>
+                      <Monitor size={14} style={{ color: 'var(--accent-blue)' }} /> Desktop
+                    </td>
+                    <td style={{ textAlign: 'right', color: desktopStats.bounceRate > 50 ? 'var(--warning)' : 'var(--text-primary)' }}>{desktopStats.bounceRate}%</td>
+                    <td style={{ textAlign: 'right' }}>{desktopStats.duration}s</td>
+                    <td style={{ textAlign: 'right', color: desktopStats.loadTime > 2.0 ? 'var(--error)' : 'var(--text-primary)' }}>{desktopStats.loadTime}s</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* UTM Link Tag Auditor */}
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: '700' }}>UTM Tracking Link Auditor</h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '200px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+              {auditedLinks.length > 0 ? (
+                auditedLinks.map((link, idx) => (
+                  <div key={idx} style={{ padding: '0.75rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', wordBreak: 'break-all', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                        {link.url}
+                      </span>
+                      <span className={`utm-badge ${link.isValid ? 'valid' : 'missing'}`}>
+                        {link.isValid ? 'TAGS OK' : 'BADGE MISSING'}
+                      </span>
+                    </div>
+                    {!link.isValid && (
+                      <div style={{ fontSize: '0.7rem', color: 'var(--error)' }}>
+                        Missing tags: <strong>{link.missing.join(', ')}</strong>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '1.5rem 0' }}>
+                  {activeStats.channel === 'email' 
+                    ? 'No outbound links extracted from template HTML.' 
+                    : 'Outbound UTM tag auditor only scans email templates.'}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }
+
