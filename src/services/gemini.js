@@ -41,7 +41,7 @@ async function callGeminiApi(prompt, apiKey) {
 export const generateCampaignPostMortem = async (campaign, apiKey) => {
   if (!apiKey) {
     // Keyless Mock mode fallback summaries
-    return getMockSummary(campaign.id);
+    return getMockSummary(campaign.id, campaign.channel);
   }
 
   const prompt = `
@@ -50,10 +50,10 @@ Campaign Name: "${campaign.name}"
 Channel: "${campaign.channel}"
 Metrics Summary:
 - Total Sent: ${campaign.sent}
-- Open Rate: ${((campaign.opens / campaign.sent) * 100).toFixed(2)}% (${campaign.opens} opens)
-- Click-Through Rate: ${((campaign.clicks / campaign.sent) * 100).toFixed(2)}% (${campaign.clicks} clicks)
-- Conversion Rate: ${((campaign.conversions / campaign.sent) * 100).toFixed(2)}% (${campaign.conversions} conversions)
-- Unsubscribe Rate: ${((campaign.unsubscribes / campaign.sent) * 100).toFixed(2)}% (${campaign.unsubscribes} unsubscribes)
+- Open Rate: ${campaign.opens ? ((campaign.opens / campaign.sent) * 100).toFixed(2) : 0}% (${campaign.opens || 0} opens)
+- Click-Through Rate: ${campaign.clicks ? ((campaign.clicks / campaign.sent) * 100).toFixed(2) : 0}% (${campaign.clicks || 0} clicks)
+- Conversion Rate: ${campaign.conversions ? ((campaign.conversions / campaign.sent) * 100).toFixed(2) : 0}% (${campaign.conversions || 0} conversions)
+- Unsubscribe Rate: ${campaign.unsubscribes ? ((campaign.unsubscribes / campaign.sent) * 100).toFixed(2) : 0}% (${campaign.unsubscribes || 0} unsubscribes)
 
 A/B Test Variant Performance:
 - Variant A (Baseline): ${campaign.variants?.a ? `${campaign.variants.a.subject} -> CTR: ${campaign.variants.a.ctr}%` : 'N/A'}
@@ -207,8 +207,57 @@ function getMockQueryResults(userQuery, campaign) {
 }
 
 // Seeds for mock fallback mode
-function getMockSummary(id) {
+function getMockSummary(id, channel) {
+  const lookupKey = id === 'dq-summer-multichannel' ? `${id}-${channel}` : id;
   const summaries = {
+    'dq-summer-multichannel-multi': `### 🏆 Key Findings
+* **Email Leads Conversions**: Multi-channel kickoff analysis shows **Email** delivered **16,000 conversions** ($720,000 revenue), accounting for 71.4% of total sales.
+* **Push High CTR**: Mobile App push notifications yielded the highest engagement rate with a **15.0% direct click rate**.
+
+### ⚠️ Performance Red Flags
+* **SMS Fatigue**: The SMS channel recorded an alarming **0.8% unsubscribe rate** (640 opt-outs), indicating that SMS broadcast sends have high fatigue risks.
+* **Bounce Rate in Push**: Push bounces reached **1,200 failed notifications**, signaling token delivery issues.
+
+### 🎯 Recommended Adjustments
+* **Cap SMS Sends**: Throttle SMS messages to high-intent cohorts only.
+* **Email Template Sync**: Migrate successful email template styles to the main lifecycle flow.`,
+
+    'dq-summer-multichannel-email': `### 🏆 Key Findings
+* **Variant A Won**: Subject line **"Summer is HERE: Free Blizzard Day! 🍦"** outperformed Variant B by an 11% CTR lift.
+* **Hero Button Leads**: The clickmap shows the **Claim Blizzard CTA** button generated 76% of total link clicks.
+
+### ⚠️ Performance Red Flags
+* **Fallback Rate Drops**: Users who fell into the **Standard Fallback segment** converted at only **0.92%**, indicating that unpersonalized templates have low yield.
+* **Spam Trap Alerts**: Soft listings on Gmail were noted due to volume spikes.
+
+### 🎯 Recommended Adjustments
+* **Insert Dynamic Liquid**: Replace default copy fallbacks with personalized location tokens.
+* **Warm Sender IPs**: Warm up your sub-domain senders before high-volume holiday blasts.`,
+
+    'dq-summer-multichannel-push': `### 🏆 Key Findings
+* **High Engagement Cohort**: App users with a score > 80 converted at **4.0%**, making up 75% of total push sales.
+* **iOS CTR Peak**: Apple devices registered a **15.0% direct click rate** compared to Android's 10%.
+
+### ⚠️ Performance Red Flags
+* **Android Bounces**: Android recorded a high bounce rate, suggesting obsolete device tokens.
+* **Variant B Draw**: Variant B urgency subject line underperformed baseline by 2% open rates.
+
+### 🎯 Recommended Adjustments
+* **Clean Device Keys**: Set up automatic token deletion for users inactive for > 90 days.
+* **iOS Banner Focus**: Promote app store reviews on high-conversion iOS user streams.`,
+
+    'dq-summer-multichannel-sms': `### 🏆 Key Findings
+* **High Open Rate**: Text message marketing achieved a **30.0% read rate**, the fastest activation speed across all channels.
+* **Revenue Yield**: Generated **1,600 conversions** from an active list size of 80,000 users.
+
+### ⚠️ Performance Red Flags
+* **Carrier Warnings**: T-Mobile carrier spam filters blocked 8,000 messages, leading to delivery drops.
+* **Opt-Out Spike**: The reply "STOP" rate reached **0.8%**, indicating high brand friction.
+
+### 🎯 Recommended Adjustments
+* **Verify Shortcodes**: Pre-register shortcode headers with major carriers.
+* **Add Personalization**: Insert custom customer first name parameters to reduce spam markings.`,
+    
     'dq-welcome-email': `### 🏆 Key Findings
 * **Variant A Won**: The subject line **"Get a FREE Blizzard Ice Cream! 🍦 Alert"** significantly outperformed Variant B with a **12.0% CTR** versus 10.0%, reaching statistical significance (98.6% confidence).
 * **VIP Gold Cohort Lead**: The **VIP Gold segment** (Z-Score: 4.8) drove **6,013 conversions** with a massive **25.0% click-through rate**, confirming high offer affinity for loyal segments.
@@ -246,7 +295,7 @@ function getMockSummary(id) {
 * **Responsive resizing**: Shrink modal layout sizes by 15% on iPad viewports to prevent banner fatigue.`
   };
 
-  return summaries[id] || `### 🏆 Key Findings
+  return summaries[lookupKey] || summaries[id] || `### 🏆 Key Findings
 * **Primary Variant Lead**: The baseline copy drove a higher click-through rate, outperforming secondary variants.
 * **Engagement High**: High-value subscriber cohorts drove the bulk of product purchases.
 
@@ -257,3 +306,4 @@ function getMockSummary(id) {
 ### 🎯 Recommended Adjustments
 * **Implement Personalization**: Audit templates to replace static fallback blocks with dynamic Liquid variables.`;
 }
+

@@ -94,6 +94,15 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
   const [loadingInsight, setLoadingInsight] = useState(null);
   const [activeChannelFilter, setActiveChannelFilter] = useState('all');
 
+  // Project active campaign stats based on channel filter selection
+  const activeStats = campaign.channels && activeChannelFilter !== 'all' && campaign.channelStats?.[activeChannelFilter]
+    ? {
+        ...campaign,
+        ...campaign.channelStats[activeChannelFilter],
+        channel: activeChannelFilter
+      }
+    : campaign;
+
   // Local action delays
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -105,7 +114,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
     setActiveChannelFilter('all');
   }, [campaign.id]);
 
-  // Fetch AI Post-Mortem Report on campaign change
+  // Fetch AI Post-Mortem Report on campaign or channel change
   useEffect(() => {
     let active = true;
     const fetchReport = async () => {
@@ -113,7 +122,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       setPostMortem('');
       setAnomalyInsights({});
       try {
-        const report = await generateCampaignPostMortem(campaign, apiKey);
+        const report = await generateCampaignPostMortem(activeStats, apiKey);
         if (active) setPostMortem(report);
       } catch {
         if (active) setPostMortem(`### ❌ Error Loading Post-Mortem\nWe could not connect to the AI engine.`);
@@ -123,16 +132,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
     };
     fetchReport();
     return () => { active = false; };
-  }, [campaign.id, apiKey]);
-
-  // Project active campaign stats based on channel filter selection
-  const activeStats = campaign.channels && activeChannelFilter !== 'all' && campaign.channelStats?.[activeChannelFilter]
-    ? {
-        ...campaign,
-        ...campaign.channelStats[activeChannelFilter],
-        channel: activeChannelFilter
-      }
-    : campaign;
+  }, [campaign.id, activeChannelFilter, apiKey]);
 
   // Anomaly diagnostic with forced 1-second delay
   const handleExplainAnomaly = async (clientKey, clientName, rate) => {
