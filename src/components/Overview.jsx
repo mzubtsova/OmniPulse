@@ -240,8 +240,10 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
     const pA = varA.sent > 0 ? (varA.opens || varA.clicks) / varA.sent : 0;
     const pB = varB.sent > 0 ? (varB.opens || varB.clicks) / varB.sent : 0;
 
-    const stdA = varA.sent > 0 ? Math.sqrt((pA * (1 - pA)) / varA.sent) : 0;
-    const stdB = varB.sent > 0 ? Math.sqrt((pB * (1 - pB)) / varB.sent) : 0;
+    // Clamp standard deviations to a minimum of 0.008 for visual rendering.
+    // Huge sample sizes yield standard errors <0.001, making the curves render as invisible 1px vertical lines.
+    const stdA = Math.max(varA.sent > 0 ? Math.sqrt((pA * (1 - pA)) / varA.sent) : 0, 0.008);
+    const stdB = Math.max(varB.sent > 0 ? Math.sqrt((pB * (1 - pB)) / varB.sent) : 0, 0.008);
 
     if (stdA === 0 || stdB === 0) return { pathA: '', pathB: '', pA, pB };
 
