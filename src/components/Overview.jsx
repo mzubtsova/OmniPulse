@@ -503,8 +503,6 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
     return issues;
   };
 
-  const failuresList = getFailuresAndRisks();
-
   // Filter deliverability for the anomalies grid display based on active channel
   const getFilteredDeliverabilityKeys = () => {
     if (!campaign.deliverability) return [];
@@ -523,6 +521,8 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
   };
 
   const deliverabilityKeys = getFilteredDeliverabilityKeys();
+
+  const failuresList = getFailuresAndRisks();
 
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
