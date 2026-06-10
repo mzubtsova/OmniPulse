@@ -824,7 +824,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
             </div>
           ) : (
             <div 
-              style={{ flex: 1, overflowY: 'auto', maxHeight: '250px', paddingRight: '0.4rem' }}
+              style={{ flex: 1, overflowY: 'auto', maxHeight: '380px', paddingRight: '0.4rem' }}
               dangerouslySetInnerHTML={{ __html: parseMarkdown(postMortem) }}
             />
           )}

@@ -1,6 +1,6 @@
 // Gemini API integrations for OmniPulse
 
-const SYSTEM_INSTRUCTION = "You are a senior MarTech growth analyst. Your goal is to write highly concise, actionable, and executive-ready post-mortem summaries for CRM campaign managers based on performance metrics.";
+const SYSTEM_INSTRUCTION = "You are a senior MarTech growth analyst. Your goal is to write highly concise, actionable, and executive-ready post-mortem summaries for CRM campaign managers based on performance metrics. DO NOT write any introductory or concluding conversational filler (e.g., do not say 'Here is the report' or write campaign header titles). Start your response directly with the section headers: '### 🏆 Key Findings', '### ⚠️ Performance Red Flags', and '### 🎯 Recommended Adjustments'.";
 
 // Live Gemini API request
 async function callGeminiApi(prompt, apiKey) {
@@ -19,7 +19,7 @@ async function callGeminiApi(prompt, apiKey) {
         ],
         generationConfig: {
           temperature: 0.2,
-          maxOutputTokens: 600
+          maxOutputTokens: 1000
         }
       })
     });
