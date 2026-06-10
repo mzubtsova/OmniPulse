@@ -9,7 +9,8 @@ import {
   Sparkles, 
   Check, 
   Mail, 
-  Layers 
+  Layers,
+  Terminal
 } from 'lucide-react';
 
 import { loadCampaigns, saveCampaigns } from './services/dataStore';
@@ -20,6 +21,7 @@ import AbSandbox from './components/AbSandbox';
 import Deliverability from './components/Deliverability';
 import Catalog from './components/Catalog';
 import Settings from './components/Settings';
+import AiExplorer from './components/AiExplorer';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -81,6 +83,8 @@ export default function App() {
         return <AbSandbox campaign={activeCampaign} />;
       case 'deliverability':
         return <Deliverability campaign={activeCampaign} apiKey={apiKey} />;
+      case 'explorer':
+        return <AiExplorer campaign={activeCampaign} apiKey={apiKey} />;
       case 'catalog':
         return (
           <Catalog 
@@ -117,6 +121,8 @@ export default function App() {
         return { title: 'A/B Test Significance Sandbox', desc: 'Bayesian statistical confidence calculator and SVG probability curve plotter' };
       case 'deliverability':
         return { title: 'Deliverability Anomalies Radar', desc: 'Identify client-specific inbox placement degradation and open rate deviations' };
+      case 'explorer':
+        return { title: 'AI SQL Data Explorer', desc: 'Query and audit campaign statistics automatically using natural language' };
       case 'catalog':
         return { title: 'Campaign Workspace Catalog', desc: 'Select or filter campaigns from historical records and imported logs' };
       case 'settings':
@@ -178,6 +184,14 @@ export default function App() {
           >
             <Mail size={18} />
             Anomalies Radar
+          </button>
+
+          <button
+            onClick={() => setActiveTab('explorer')}
+            className={`sidebar-item ${activeTab === 'explorer' ? 'active' : ''}`}
+          >
+            <Terminal size={18} />
+            AI SQL Explorer
           </button>
 
           <button

@@ -1,14 +1,43 @@
-import React, { useState, useRef } from 'react';
-import { Settings as SettingsIcon, ShieldAlert, Key, FileSpreadsheet, Upload, CheckCircle2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
-import { parseCsvCampaignLog } from '../services/dataStore';
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  ShieldAlert, 
+  Key, 
+  FileSpreadsheet, 
+  Upload, 
+  CheckCircle2, 
+  AlertTriangle, 
+  Eye, 
+  EyeOff, 
+  CloudLightning, 
+  Link as LinkIcon, 
+  RefreshCw 
+} from 'lucide-react';
+import { parseCsvCampaignLog, fetchBrazeCampaignStats } from '../services/dataStore';
 
 export default function Settings({ apiKey, setApiKey, onImportCampaigns }) {
   const [showKey, setShowKey] = useState(false);
+  const [showBrazeKey, setShowBrazeKey] = useState(false);
+  
+  // Braze API configuration states
+  const [brazeEndpoint, setBrazeEndpoint] = useState('');
+  const [brazeApiKey, setBrazeApiKey] = useState('');
+  const [brazeCampaignId, setBrazeCampaignId] = useState('');
+  
+  // Status states
   const [dragActive, setDragActive] = useState(false);
   const [csvError, setCsvError] = useState('');
   const [csvSuccess, setCsvSuccess] = useState('');
-  
+  const [brazeError, setBrazeError] = useState('');
+  const [brazeSuccess, setBrazeSuccess] = useState('');
+  const [loadingBraze, setLoadingBraze] = useState(false);
+
   const fileInputRef = useRef(null);
+
+  // Load Braze configs on mount
+  useEffect(() => {
+    setBrazeEndpoint(localStorage.getItem('braze_endpoint') || 'https://rest.iad-01.braze.com');
+    setBrazeApiKey(localStorage.getItem('braze_api_key') || '');
+  }, []);
 
   const handleKeySave = (e) => {
     const value = e.target.value.trim();
@@ -16,6 +45,49 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns }) {
     localStorage.setItem('gemini_api_key', value);
   };
 
+  const handleBrazeEndpointSave = (e) => {
+    const value = e.target.value.trim();
+    setBrazeEndpoint(value);
+    localStorage.setItem('braze_endpoint', value);
+  };
+
+  const handleBrazeApiKeySave = (e) => {
+    const value = e.target.value.trim();
+    setBrazeApiKey(value);
+    localStorage.setItem('braze_api_key', value);
+  };
+
+  // Connect & fetch deployed Braze stats
+  const handleConnectCampaign = async (e) => {
+    e.preventDefault();
+    if (!brazeCampaignId.trim()) {
+      setBrazeError("Please enter a valid Campaign ID.");
+      return;
+    }
+
+    setBrazeError('');
+    setBrazeSuccess('');
+    setLoadingBraze(true);
+
+    try {
+      const campaignRecord = await fetchBrazeCampaignStats(
+        brazeCampaignId.trim(),
+        brazeEndpoint,
+        brazeApiKey
+      );
+      
+      // Import into shared campaigns catalog
+      onImportCampaigns([campaignRecord]);
+      setBrazeSuccess(`Successfully connected and imported metrics for Campaign ID: ${brazeCampaignId}`);
+      setBrazeCampaignId('');
+    } catch (err) {
+      setBrazeError(err.message || "Failed to fetch campaign stats from Braze REST endpoint.");
+    } finally {
+      setLoadingBraze(false);
+    }
+  };
+
+  // Drag-and-drop CSV functions
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -109,24 +181,137 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns }) {
             </button>
           </div>
         </div>
-
-        <div style={{ display: 'flex', gap: '0.75rem', padding: '1rem', backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-md)' }}>
-          <ShieldAlert size={16} style={{ color: 'var(--accent-purple)', flexShrink: 0, marginTop: '2px' }} />
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-            <strong>Local & Secure:</strong> Your API key is stored locally inside your browser's private `localStorage` cache. It never leaves your machine or passes through third-party servers.
-          </p>
-        </div>
       </div>
 
-      {/* 2. Drag & Drop CSV Uploader Panel */}
+      {/* 2. Braze Live Connector Panel */}
+      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <h3 style={{ fontSize: '1.05rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <CloudLightning size={16} style={{ color: 'var(--accent-cyan)' }} />
+          Connect Live Deployed Braze Campaigns
+        </h3>
+        
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          Link your Braze REST API credentials and enter a Campaign ID to pull live post-deployment open, click, and conversion statistics.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.8rem' }}>Braze REST Endpoint</label>
+            <input
+              type="text"
+              className="form-input"
+              value={brazeEndpoint}
+              onChange={handleSimulatedWarning => {
+                handleBrazeEndpointSave(handleSimulatedWarning);
+                setBrazeError('');
+              }}
+              placeholder="e.g. https://rest.iad-01.braze.com"
+              style={{ fontSize: '0.85rem' }}
+            />
+          </div>
+
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.8rem' }}>Braze REST API Key</label>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showBrazeKey ? 'text' : 'password'}
+                className="form-input"
+                value={brazeApiKey}
+                onChange={handleBrazeApiKeySave}
+                placeholder="Paste REST API Key"
+                style={{ paddingRight: '45px', fontSize: '0.85rem' }}
+              />
+              <button
+                onClick={() => setShowBrazeKey(!showBrazeKey)}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                {showBrazeKey ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleConnectCampaign} style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+          <div className="form-group" style={{ margin: 0, flex: 1 }}>
+            <input
+              type="text"
+              className="form-input"
+              value={brazeCampaignId}
+              onChange={(e) => setBrazeCampaignId(e.target.value)}
+              placeholder="Enter Braze Campaign ID (e.g., 65a2d8f9b1...)"
+              style={{ fontSize: '0.85rem' }}
+            />
+          </div>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={loadingBraze}
+            style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            {loadingBraze ? (
+              <RefreshCw size={14} className="spin" />
+            ) : (
+              <LinkIcon size={14} />
+            )}
+            Connect Campaign
+          </button>
+        </form>
+
+        {/* Feedback logs */}
+        {brazeError && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.85rem',
+            backgroundColor: 'rgba(244,63,94,0.08)',
+            border: '1px solid rgba(244,63,94,0.15)',
+            borderRadius: '8px',
+            color: 'var(--error)',
+            fontSize: '0.8rem'
+          }}>
+            <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+            <span>{brazeError}</span>
+          </div>
+        )}
+
+        {brazeSuccess && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.85rem',
+            backgroundColor: 'rgba(16,185,129,0.08)',
+            border: '1px solid rgba(16,185,129,0.15)',
+            borderRadius: '8px',
+            color: 'var(--success)',
+            fontSize: '0.8rem'
+          }}>
+            <CheckCircle2 size={14} style={{ flexShrink: 0 }} />
+            <span>{brazeSuccess}</span>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Drag & Drop CSV Uploader Panel */}
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         <h3 style={{ fontSize: '1.05rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <FileSpreadsheet size={16} style={{ color: 'var(--success)' }} />
-          Import Performance Logs
+          Import Performance Logs (CSV)
         </h3>
 
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Upload standard campaign analytics exports (CSVs) to parse data and populate the clickmaps, branches, and anomalies dashboards.
+          Alternatively, upload standard campaign analytics exports (CSVs) to parse data and populate the clickmaps and dashboard reports.
         </p>
 
         {/* Drag Drop Area */}
@@ -188,25 +373,8 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns }) {
             <span>{csvSuccess}</span>
           </div>
         )}
-
-        {/* Sample File Reference Card */}
-        <div style={{ padding: '1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
-          <h4 style={{ fontSize: '0.82rem', fontWeight: '600', color: '#fff', marginBottom: '0.5rem' }}>Expected CSV Columns:</h4>
-          <code style={{
-            display: 'block',
-            backgroundColor: 'rgba(0,0,0,0.2)',
-            padding: '0.5rem',
-            borderRadius: '4px',
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.72rem',
-            color: 'var(--accent-cyan)',
-            wordBreak: 'break-all'
-          }}>
-            name,channel,sent,opens,clicks,conversions,subject[,unsubscribes,bounces]
-          </code>
-        </div>
-
       </div>
+
     </div>
   );
 }
