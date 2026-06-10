@@ -14,7 +14,10 @@ import {
   FileText,
   CheckCircle2,
   Bug,
-  AlertCircle
+  AlertCircle,
+  TrendingUp,
+  DollarSign,
+  ShieldAlert
 } from 'lucide-react';
 import { generateCampaignPostMortem, generateAnomalyExplanation } from '../services/gemini';
 import { calculateABStats } from '../utils/statsMath';
@@ -54,7 +57,6 @@ const ProgressRing = ({ percentage, label, color }) => {
   return (
     <div className="progress-ring-container" style={{ width: '104px', height: '104px', margin: '0 auto' }}>
       <svg height={radius * 2} width={radius * 2}>
-        {/* Background track circle */}
         <circle
           stroke="var(--bg-tertiary)"
           fill="transparent"
@@ -63,7 +65,6 @@ const ProgressRing = ({ percentage, label, color }) => {
           cx={radius}
           cy={radius}
         />
-        {/* Foreground active circle */}
         <circle
           stroke={color}
           fill="transparent"
@@ -203,6 +204,29 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
   const unsubRate = activeStats.sent > 0 ? ((activeStats.unsubscribes / activeStats.sent) * 100).toFixed(2) : 0;
   const bounceRate = activeStats.sent > 0 ? (((activeStats.bounces || 0) / activeStats.sent) * 100).toFixed(2) : 0;
   const overallRate = parseFloat(openRate);
+
+  // BRAND BENCHMARKS COMPARISONS
+  const benchmarks = {
+    delivery: 99.5,
+    open: 22.0,
+    click: 5.5,
+    conversion: 2.2,
+    unsubscribe: 0.15
+  };
+
+  const devDelivery = (parseFloat(deliveryRate) - benchmarks.delivery).toFixed(1);
+  const devOpen = (parseFloat(openRate) - benchmarks.open).toFixed(1);
+  const devClick = (parseFloat(clickRate) - benchmarks.click).toFixed(1);
+  const devConv = (parseFloat(convRate) - benchmarks.conversion).toFixed(1);
+  const devUnsub = (parseFloat(unsubRate) - benchmarks.unsubscribe).toFixed(2);
+
+  // FINANCIAL IMPACT CALCULATIONS
+  const averageOrderValue = 45; // Simulated $45 order value
+  const customerLifetimeValue = 120; // Simulated $120 CLV for unsub/bounce value losses
+  const revenueGenerated = activeStats.conversions * averageOrderValue;
+  const unsubLoss = activeStats.unsubscribes * customerLifetimeValue;
+  const bounceLoss = (activeStats.bounces || 0) * customerLifetimeValue;
+  const netValue = revenueGenerated - unsubLoss - bounceLoss;
 
   // Compute A/B significance metrics based on activeStats projection
   const stats = calculateABStats(activeStats.variants);
@@ -408,7 +432,6 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       Object.entries(campaign.deliverability).forEach(([client, data]) => {
         const deviation = data.rate - overallRate;
         if (deviation <= -4.0) {
-          // If channel filter matches client type
           const isEmailClient = ['gmail', 'outlook', 'yahoo'].includes(client);
           const isPushClient = ['ios', 'android'].includes(client);
           const isSmsClient = ['carrier_att', 'carrier_tmobile'].includes(client);
@@ -432,7 +455,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       });
     }
 
-    // Logic branches failures / low conversion yields (only when on 'all' or relevant view)
+    // Logic branches failures / low conversion yields
     if (campaign.branches && (!filter || filter === 'email')) {
       campaign.branches.forEach(branch => {
         if (branch.ctr < 4.0) {
@@ -453,6 +476,17 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
         type: `[${activeChannelFilter.toUpperCase()}] Delivery Failure`,
         severity: 'critical',
         message: `${activeStats.bounces.toLocaleString()} hard/soft bounces detected (${bounceRate}% failure rate).`
+      });
+    }
+
+    // Blacklist validation (Simulated audit based on deliveries)
+    const isAnomalyExist = deliverabilityKeys.some(k => (campaign.deliverability[k]?.rate - overallRate) <= -4.0);
+    if (isAnomalyExist) {
+      issues.push({
+        id: 'blacklist-sorbs',
+        type: 'Domain Blacklist Alert',
+        severity: 'warning',
+        message: 'Sender IP registered soft block listing on SORBS database. Review bounce classifications.'
       });
     }
 
@@ -494,7 +528,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
       {/* ========================================================================= */}
-      {/* PANEL 1: EXECUTIVE PERFORMANCE LEDGER & KPI GAUGES                         */}
+      {/* PANEL 1: EXECUTIVE PERFORMANCE LEDGER & BENCHMARKS MATRIX                 */}
       {/* ========================================================================= */}
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
@@ -589,6 +623,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
           </div>
         </div>
 
+        {/* Gauges Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1.5rem', margin: '0.5rem 0' }}>
           <ProgressRing percentage={parseFloat(deliveryRate)} label="Delivered" color="var(--success)" />
           {activeStats.channel !== 'sms' && activeStats.channel !== 'iam' && (
@@ -599,32 +634,168 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
           <ProgressRing percentage={parseFloat(unsubRate)} label="Unsub Rate" color="var(--error)" />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
-          <div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Volume Sent</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem' }}>{activeStats.sent.toLocaleString()}</div>
+        {/* Campaign Metrics vs. Brand Benchmark Matrix */}
+        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            Campaign performance vs. Brand Benchmarks Matrix
           </div>
-          <div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Bounces</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: activeStats.bounces > 0 ? 'var(--error)' : 'var(--text-primary)' }}>{activeStats.bounces?.toLocaleString() || '0'}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Delivered</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: 'var(--success)' }}>{delivered.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Unique Clicks</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: 'var(--accent-primary)' }}>{activeStats.clicks.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Conversions</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: 'var(--success)' }}>{activeStats.conversions.toLocaleString()}</div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+            <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>DELIVERY SUCCESS</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.2rem' }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: '700' }}>{deliveryRate}%</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: '600', color: devDelivery >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                  ({devDelivery >= 0 ? `+${devDelivery}` : devDelivery}% vs BM)
+                </span>
+              </div>
+            </div>
+            {activeStats.channel !== 'sms' && activeStats.channel !== 'iam' && (
+              <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>OPEN RATE</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.2rem' }}>
+                  <span style={{ fontSize: '1.15rem', fontWeight: '700' }}>{openRate}%</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '600', color: devOpen >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                    ({devOpen >= 0 ? `+${devOpen}` : devOpen}% vs BM)
+                  </span>
+                </div>
+              </div>
+            )}
+            <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>CLICK-THROUGH RATE</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.2rem' }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: '700' }}>{clickRate}%</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: '600', color: devClick >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                  ({devClick >= 0 ? `+${devClick}` : devClick}% vs BM)
+                </span>
+              </div>
+            </div>
+            <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>CONVERSION RATE</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.2rem' }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: '700' }}>{convRate}%</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: '600', color: devConv >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                  ({devConv >= 0 ? `+${devConv}` : devConv}% vs BM)
+                </span>
+              </div>
+            </div>
+            <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>UNSUBSCRIBE RATE</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.2rem' }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: '700' }}>{unsubRate}%</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: '600', color: devUnsub <= 0 ? 'var(--success)' : 'var(--error)' }}>
+                  ({devUnsub > 0 ? `+${devUnsub}` : devUnsub}% vs BM)
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* PANEL 2: AI EXECUTIVE POST-MORTEM & FAILURES / RISKS LEDGER                */}
+      {/* PANEL 2: RETROSPECTIVE CONVERSION FUNNEL & FINANCIAL IMPACT LEDGER         */}
+      {/* ========================================================================= */}
+      <div className="split-view">
+        
+        {/* Retrospective Conversion Funnel */}
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <TrendingUp size={15} style={{ color: 'var(--accent-secondary)' }} />
+            Retrospective Conversion Funnel
+          </h3>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.5rem' }}>
+            {[
+              { label: '1. Total Segment Sent', val: activeStats.sent, pct: 100 },
+              { label: '2. Delivered Messages', val: delivered, pct: ((delivered / activeStats.sent) * 100).toFixed(1) },
+              ...(activeStats.channel !== 'sms' && activeStats.channel !== 'iam' ? [{ label: '3. Opened Messages', val: activeStats.opens, pct: ((activeStats.opens / delivered) * 100).toFixed(1) }] : []),
+              { label: '4. Unique Clicks', val: activeStats.clicks, pct: ((activeStats.clicks / (activeStats.opens || delivered)) * 100).toFixed(1) },
+              { label: '5. Segment Conversions', val: activeStats.conversions, pct: ((activeStats.conversions / activeStats.clicks) * 100).toFixed(1) }
+            ].map((stage, idx, arr) => {
+              const widthRatio = 100 - idx * 8;
+              return (
+                <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', padding: '0 0.25rem' }}>
+                    <span style={{ fontWeight: '600' }}>{stage.label}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      {stage.val.toLocaleString()} &bull; <strong style={{ color: 'var(--text-primary)' }}>{stage.pct}%</strong>
+                      {idx > 0 ? ` conversion` : ' target'}
+                    </span>
+                  </div>
+                  <div style={{
+                    height: '24px',
+                    width: `${widthRatio}%`,
+                    backgroundColor: 'rgba(12, 16, 27, 0.4)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '4px',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${stage.pct}%`,
+                      background: idx % 2 === 0 ? 'var(--blue-gradient)' : 'var(--cyan-gradient)',
+                      opacity: 0.85
+                    }}></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Post-Deployment Revenue & Churn Auditor */}
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <DollarSign size={15} style={{ color: 'var(--success)' }} />
+            Post-Deployment Revenue & Churn Auditor
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem', flex: 1 }}>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ padding: '0.85rem', backgroundColor: 'rgba(16, 185, 129, 0.04)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>GROSS CAMPAIGN REVENUE</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--success)', marginTop: '0.2rem' }}>
+                  +${revenueGenerated.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Based on AOV of ${averageOrderValue}</div>
+              </div>
+
+              <div style={{ padding: '0.85rem', backgroundColor: 'rgba(239, 68, 68, 0.04)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>UNSUBSCRIBE VALUE CHURN</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--error)', marginTop: '0.2rem' }}>
+                  -${unsubLoss.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Based on CLV of ${customerLifetimeValue}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ padding: '0.85rem', backgroundColor: 'rgba(239, 68, 68, 0.04)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>BOUNCE DELIV CHURN</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--error)', marginTop: '0.2rem' }}>
+                  -${bounceLoss.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Based on CLV of ${customerLifetimeValue}</div>
+              </div>
+
+              <div style={{ padding: '0.85rem', backgroundColor: netValue >= 0 ? 'rgba(16, 185, 129, 0.06)' : 'rgba(239, 68, 68, 0.06)', borderRadius: '8px', border: `1px solid ${netValue >= 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}` }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>NET MARKETING VALUE</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: '800', color: netValue >= 0 ? 'var(--success)' : 'var(--error)', marginTop: '0.2rem' }}>
+                  {netValue >= 0 ? `+$${netValue.toLocaleString()}` : `-$${Math.abs(netValue).toLocaleString()}`}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Net Value Yield Ledger</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      {/* ========================================================================= */}
+      {/* PANEL 3: AI EXECUTIVE POST-MORTEM & FAILURES / RISKS LEDGER                */}
       {/* ========================================================================= */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: '2rem' }}>
         
@@ -722,7 +893,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       </div>
 
       {/* ========================================================================= */}
-      {/* PANEL 3: DIAGNOSTIC DIAGRAMS & DELIVERABILITY RADAR                        */}
+      {/* PANEL 4: DIAGNOSTIC DIAGRAMS & DELIVERABILITY RADAR                        */}
       {/* ========================================================================= */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
         
@@ -734,11 +905,29 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
           {renderClickmapFrame()}
         </div>
 
-        {/* Deliverability Warnings & Anomalies */}
+        {/* Deliverability Warnings & Anomalies (Spam traps and Blacklists) */}
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: '700' }}>
-            {activeChannelFilter === 'all' ? 'Deliverability Placement Radar' : `${activeChannelFilter.toUpperCase()} Placement Radar`}
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: '700' }}>
+              {activeChannelFilter === 'all' ? 'Deliverability Placement Radar' : `${activeChannelFilter.toUpperCase()} Placement Radar`}
+            </h3>
+            
+            {/* IP Blacklist audit status */}
+            <span style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '0.25rem', 
+              fontSize: '0.68rem', 
+              padding: '0.15rem 0.45rem', 
+              borderRadius: '4px',
+              backgroundColor: failuresList.some(i => i.id === 'blacklist-sorbs') ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)',
+              border: `1px solid ${failuresList.some(i => i.id === 'blacklist-sorbs') ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}`,
+              color: failuresList.some(i => i.id === 'blacklist-sorbs') ? 'var(--warning)' : 'var(--success)'
+            }}>
+              <ShieldAlert size={10} />
+              {failuresList.some(i => i.id === 'blacklist-sorbs') ? 'SORBS BLOCKED' : 'IP BLACKLIST CLEAN'}
+            </span>
+          </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '360px', paddingRight: '0.25rem' }}>
             {deliverabilityKeys.length > 0 ? (
@@ -787,7 +976,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       </div>
 
       {/* ========================================================================= */}
-      {/* PANEL 4: A/B TESTING & LIQUID LOGIC BRANCH ATTRIBUTION                     */}
+      {/* PANEL 5: A/B TESTING & LIQUID LOGIC BRANCH ATTRIBUTION                     */}
       {/* ========================================================================= */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
         
