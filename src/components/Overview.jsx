@@ -98,6 +98,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showAbTooltip, setShowAbTooltip] = useState(false);
 
   // Reset channel filter on campaign swap
   useEffect(() => {
@@ -984,13 +985,61 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       <div className="grid-asymmetric-2">
         
         {/* A/B Significance curves */}
-        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
+          <h3 
+            style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'help' }}
+            onMouseEnter={() => setShowAbTooltip(true)}
+            onMouseLeave={() => setShowAbTooltip(false)}
+          >
             <Scale size={14} style={{ color: 'var(--accent-secondary)' }} />
             Bayesian Significance Curve Overlay
+            <Info size={12} style={{ color: 'var(--text-muted)', marginLeft: '0.2rem' }} />
           </h3>
           
-          <div style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-md)', padding: '0.85rem' }}>
+          {showAbTooltip && (
+            <div style={{
+              position: 'absolute',
+              top: '2.8rem',
+              left: '1.75rem',
+              right: '1.75rem',
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--accent-primary)',
+              borderRadius: '8px',
+              padding: '1rem',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+              zIndex: 10,
+              fontSize: '0.78rem',
+              lineHeight: '1.45',
+              color: 'var(--text-secondary)',
+              backdropFilter: 'blur(10px)',
+              pointerEvents: 'none'
+            }}>
+              <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem' }}>
+                📊 What does this curve show?
+              </strong>
+              <p style={{ marginBottom: '0.4rem' }}>
+                It compares <strong>Variant A (Baseline)</strong> and <strong>Variant B (Challenger)</strong> to determine if the Challenger's performance lift is statistically real, or just lucky variance.
+              </p>
+              <p style={{ marginBottom: '0.4rem' }}>
+                * <strong>Blue & Purple Curves</strong>: Represent the probability distribution of the true conversion rate for each variant.
+              </p>
+              <p>
+                * <strong>Overlap</strong>: High overlap means the A/B test results are inconclusive. No overlap means the winner is statistically guaranteed.
+              </p>
+            </div>
+          )}
+          
+          <div 
+            style={{ 
+              backgroundColor: 'var(--bg-tertiary)', 
+              border: '1px solid var(--border-color)', 
+              borderRadius: 'var(--border-radius-md)', 
+              padding: '0.85rem',
+              cursor: 'help'
+            }}
+            onMouseEnter={() => setShowAbTooltip(true)}
+            onMouseLeave={() => setShowAbTooltip(false)}
+          >
             {pathA && pathB ? (
               <svg viewBox="0 0 460 130" style={{ width: '100%', height: 'auto' }}>
                 <path d={pathA} fill="rgba(37, 99, 235, 0.04)" stroke="var(--accent-blue)" strokeWidth="2" />
