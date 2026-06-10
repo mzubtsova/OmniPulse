@@ -18,16 +18,11 @@ import { parseCsvCampaignLog, fetchBrazeCampaignStats } from '../services/dataSt
 export default function Settings({ apiKey, setApiKey, onImportCampaigns, onResetCampaigns }) {
   const [showKey, setShowKey] = useState(false);
   const [showBrazeKey, setShowBrazeKey] = useState(false);
-  const [showGa4Secret, setShowGa4Secret] = useState(false);
   
   // Braze API configuration states
   const [brazeEndpoint, setBrazeEndpoint] = useState('');
   const [brazeApiKey, setBrazeApiKey] = useState('');
   const [brazeCampaignId, setBrazeCampaignId] = useState('');
-  
-  // GA4 API configuration states
-  const [ga4MeasurementId, setGa4MeasurementId] = useState('');
-  const [ga4ApiSecret, setGa4ApiSecret] = useState('');
   
   // Status states
   const [dragActive, setDragActive] = useState(false);
@@ -43,8 +38,6 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns, onReset
   useEffect(() => {
     setBrazeEndpoint(localStorage.getItem('braze_endpoint') || 'https://rest.iad-01.braze.com');
     setBrazeApiKey(localStorage.getItem('braze_api_key') || '');
-    setGa4MeasurementId(localStorage.getItem('ga4_measurement_id') || '');
-    setGa4ApiSecret(localStorage.getItem('ga4_api_secret') || '');
   }, []);
 
 
@@ -66,17 +59,6 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns, onReset
     localStorage.setItem('braze_api_key', value);
   };
 
-  const handleGa4MeasurementIdSave = (e) => {
-    const value = e.target.value.trim();
-    setGa4MeasurementId(value);
-    localStorage.setItem('ga4_measurement_id', value);
-  };
-
-  const handleGa4ApiSecretSave = (e) => {
-    const value = e.target.value.trim();
-    setGa4ApiSecret(value);
-    localStorage.setItem('ga4_api_secret', value);
-  };
 
 
   // Connect & fetch deployed Braze stats
@@ -323,63 +305,6 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns, onReset
             <span>{brazeSuccess}</span>
           </div>
         )}
-      </div>
-
-      {/* Google Analytics (GA4) API Integration Panel */}
-      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <BarChart3 size={16} style={{ color: 'var(--accent-primary)' }} />
-          Google Analytics (GA4) API Integration
-        </h3>
-        
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Configure your Google Analytics (GA4) credentials to sync post-click sessions, bounce rates, page load speed diagnostics, and conversion tracking audits.
-        </p>
-
-        <div className="grid-compact-2col">
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>GA4 Measurement ID</label>
-            <input
-              type="text"
-              className="form-input"
-              value={ga4MeasurementId}
-              onChange={handleGa4MeasurementIdSave}
-              placeholder="e.g. G-XXXXXXXXXX"
-              style={{ fontSize: '0.85rem' }}
-            />
-          </div>
-
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>GA4 API Secret Key</label>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <input
-                type={showGa4Secret ? 'text' : 'password'}
-                className="form-input"
-                value={ga4ApiSecret}
-                onChange={handleGa4ApiSecretSave}
-                placeholder="Paste Measurement Protocol Secret"
-                style={{ paddingRight: '45px', fontSize: '0.85rem' }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowGa4Secret(!showGa4Secret)}
-                style={{
-                  position: 'absolute',
-                  right: '10px',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                {showGa4Secret ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* 3. Drag & Drop CSV Uploader Panel */}

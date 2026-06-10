@@ -17,7 +17,10 @@ import {
   AlertCircle,
   TrendingUp,
   DollarSign,
-  ShieldAlert
+  ShieldAlert,
+  BarChart3,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { generateCampaignPostMortem, generateAnomalyExplanation } from '../services/gemini';
 import { calculateABStats } from '../utils/statsMath';
@@ -87,6 +90,28 @@ const ProgressRing = ({ percentage, label, color }) => {
 };
 
 export default function Overview({ campaign, apiKey, onSaveReport }) {
+  const [activeTab, setActiveTab] = useState('sql'); // 'sql' or 'ga'
+  const [ga4MeasurementId, setGa4MeasurementId] = useState('');
+  const [ga4ApiSecret, setGa4ApiSecret] = useState('');
+  const [showGa4Secret, setShowGa4Secret] = useState(false);
+
+  useEffect(() => {
+    setGa4MeasurementId(localStorage.getItem('ga4_measurement_id') || '');
+    setGa4ApiSecret(localStorage.getItem('ga4_api_secret') || '');
+  }, []);
+
+  const handleGa4MeasurementIdSave = (e) => {
+    const value = e.target.value.trim();
+    setGa4MeasurementId(value);
+    localStorage.setItem('ga4_measurement_id', value);
+  };
+
+  const handleGa4ApiSecretSave = (e) => {
+    const value = e.target.value.trim();
+    setGa4ApiSecret(value);
+    localStorage.setItem('ga4_api_secret', value);
+  };
+
   const [postMortem, setPostMortem] = useState('');
   const [loadingReport, setLoadingReport] = useState(false);
   const [hoveredHotspot, setHoveredHotspot] = useState(null);
@@ -602,10 +627,53 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
-      {/* ========================================================================= */}
-      {/* PANEL 1: EXECUTIVE PERFORMANCE LEDGER & BENCHMARKS MATRIX                 */}
-      {/* ========================================================================= */}
-      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* 📊 Tab Selector Bar: SQL CRM vs. Google Analytics */}
+      <div style={{
+        display: 'flex',
+        gap: '0.5rem',
+        backgroundColor: 'var(--bg-secondary)',
+        padding: '0.4rem',
+        borderRadius: '10px',
+        border: '1px solid var(--border-color)',
+        alignSelf: 'flex-start',
+        marginBottom: '0.5rem'
+      }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('sql')}
+          className={`btn ${activeTab === 'sql' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{
+            fontSize: '0.85rem',
+            fontWeight: '600',
+            padding: '0.5rem 1.25rem',
+            borderRadius: '6px',
+            border: activeTab === 'sql' ? 'none' : '1px solid transparent'
+          }}
+        >
+          SQL Database & CRM Metrics
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('ga')}
+          className={`btn ${activeTab === 'ga' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{
+            fontSize: '0.85rem',
+            fontWeight: '600',
+            padding: '0.5rem 1.25rem',
+            borderRadius: '6px',
+            border: activeTab === 'ga' ? 'none' : '1px solid transparent'
+          }}
+        >
+          Google Analytics (GA4 Post-Click)
+        </button>
+      </div>
+
+      {activeTab === 'sql' && (
+        <>
+          {/* ========================================================================= */}
+          {/* PANEL 1: EXECUTIVE PERFORMANCE LEDGER & BENCHMARKS MATRIX                 */}
+          {/* ========================================================================= */}
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
           <div>
             <h2 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Post-Deployment Executive Summary</h2>
@@ -1180,11 +1248,70 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
         </div>
 
       </div>
+    </>
+  )}
 
-      {/* ========================================================================= */}
-      {/* PANEL 6: GOOGLE ANALYTICS (GA4) POST-CLICK PERFORMANCE AUDIT               */}
-      {/* ========================================================================= */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
+      {activeTab === 'ga' && (
+        <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          
+          {/* GA4 API Integration Configuration Panel */}
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <BarChart3 size={16} style={{ color: 'var(--accent-purple)' }} />
+              Google Analytics (GA4) API Integration
+            </h3>
+            
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Configure your Google Analytics (GA4) credentials here to sync post-click sessions, bounce rates, page load speed diagnostics, and conversion tracking audits.
+            </p>
+
+            <div className="grid-compact-2col">
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.8rem' }}>GA4 Measurement ID</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={ga4MeasurementId}
+                  onChange={handleGa4MeasurementIdSave}
+                  placeholder="e.g. G-XXXXXXXXXX"
+                  style={{ fontSize: '0.85rem' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.8rem' }}>GA4 API Secret Key</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type={showGa4Secret ? 'text' : 'password'}
+                    className="form-input"
+                    value={ga4ApiSecret}
+                    onChange={handleGa4ApiSecretSave}
+                    placeholder="Paste Measurement Protocol Secret"
+                    style={{ paddingRight: '45px', fontSize: '0.85rem' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowGa4Secret(!showGa4Secret)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    {showGa4Secret ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
         <h3 style={{ fontSize: '1.15rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <TrendingUp size={18} style={{ color: 'var(--accent-purple)' }} />
           Google Analytics (GA4) Post-Click Diagnostics
@@ -1370,6 +1497,8 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
           </div>
         </div>
       </div>
+    </div>
+  )}
 
     </div>
   );
