@@ -24,9 +24,9 @@ function parseMarkdown(text) {
   if (!text) return '';
   
   let html = text
-    .replace(/^### (.*$)/gim, '<h4 style="font-size: 0.95rem; font-weight: 700; margin-top: 1rem; margin-bottom: 0.4rem; color: #fff; display: flex; align-items: center; gap: 0.3rem;">$1</h4>')
-    .replace(/^## (.*$)/gim, '<h3 style="font-size: 1.1rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.6rem; color: #fff;">$1</h3>')
-    .replace(/^# (.*$)/gim, '<h2 style="font-size: 1.2rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.85rem; color: #fff;">$1</h2>');
+    .replace(/^### (.*$)/gim, '<h4 style="font-size: 0.95rem; font-weight: 700; margin-top: 1rem; margin-bottom: 0.4rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.3rem;">$1</h4>')
+    .replace(/^## (.*$)/gim, '<h3 style="font-size: 1.1rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.6rem; color: var(--text-primary);">$1</h3>')
+    .replace(/^# (.*$)/gim, '<h2 style="font-size: 1.2rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.85rem; color: var(--text-primary);">$1</h2>');
   
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   
@@ -45,29 +45,31 @@ function parseMarkdown(text) {
 }
 
 const ProgressRing = ({ percentage, label, color }) => {
-  const radius = 50;
-  const stroke = 6;
-  const normalizedRadius = radius - stroke * 2;
+  const radius = 52;
+  const stroke = 8;
+  const normalizedRadius = radius - stroke;
   const circumference = normalizedRadius * 2 * Math.PI;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div className="progress-ring-container" style={{ width: '100px', height: '100px', margin: '0 auto' }}>
+    <div className="progress-ring-container" style={{ width: '104px', height: '104px', margin: '0 auto' }}>
       <svg height={radius * 2} width={radius * 2}>
+        {/* Background track circle */}
         <circle
-          stroke="rgba(255,255,255,0.02)"
+          stroke="var(--bg-tertiary)"
           fill="transparent"
-          strokeWidth={stroke}
+          strokeWidth={stroke - 3}
           r={normalizedRadius}
           cx={radius}
           cy={radius}
         />
+        {/* Foreground active circle */}
         <circle
           stroke={color}
           fill="transparent"
           strokeWidth={stroke}
           strokeDasharray={circumference + ' ' + circumference}
-          style={{ strokeDashoffset }}
+          style={{ strokeDashoffset, filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.15))' }}
           r={normalizedRadius}
           cx={radius}
           cy={radius}
@@ -76,8 +78,8 @@ const ProgressRing = ({ percentage, label, color }) => {
         />
       </svg>
       <div className="progress-ring-text">
-        <span style={{ fontSize: '1.2rem', fontWeight: '700' }}>{percentage}%</span>
-        <span className="progress-ring-label" style={{ fontSize: '0.55rem' }}>{label}</span>
+        <span style={{ fontSize: '1.15rem', fontWeight: '700', letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>{percentage}%</span>
+        <span className="progress-ring-label" style={{ fontSize: '0.55rem', fontWeight: '600' }}>{label}</span>
       </div>
     </div>
   );
@@ -90,6 +92,11 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
   const [anomalyInsights, setAnomalyInsights] = useState({});
   const [loadingInsight, setLoadingInsight] = useState(null);
   const [activeChannelFilter, setActiveChannelFilter] = useState('all');
+
+  // Local action delays
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Reset channel filter on campaign swap
   useEffect(() => {
@@ -125,16 +132,60 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       }
     : campaign;
 
+  // Anomaly diagnostic with forced 1-second delay
   const handleExplainAnomaly = async (clientKey, clientName, rate) => {
     setLoadingInsight(clientKey);
+    const start = Date.now();
     try {
       const insight = await generateAnomalyExplanation(clientName, rate, overallRate, apiKey);
+      const elapsed = Date.now() - start;
+      if (elapsed < 1000) {
+        await new Promise(r => setTimeout(r, 1000 - elapsed));
+      }
       setAnomalyInsights(prev => ({ ...prev, [clientKey]: insight }));
     } catch {
       setAnomalyInsights(prev => ({ ...prev, [clientKey]: "Failed to diagnose anomaly." }));
     } finally {
       setLoadingInsight(null);
     }
+  };
+
+  // 1-second delay handlers for action buttons
+  const triggerSaveReport = () => {
+    setIsSaving(true);
+    setTimeout(() => {
+      onSaveReport(activeStats.name, {
+        sent: activeStats.sent,
+        opens: activeStats.opens,
+        clicks: activeStats.clicks,
+        conversions: activeStats.conversions,
+        bounces: activeStats.bounces,
+        unsubscribes: activeStats.unsubscribes
+      }, postMortem);
+      setIsSaving(false);
+    }, 1000);
+  };
+
+  const triggerPrintReport = () => {
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setIsPrinting(false);
+    }, 1000);
+  };
+
+  const triggerExportJson = () => {
+    setIsExporting(true);
+    setTimeout(() => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeStats, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `${activeStats.id}-report.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      setIsExporting(false);
+    }, 1000);
   };
 
   const getBranchBadgeStyle = (ctr) => {
@@ -456,46 +507,37 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            {/* Download/Export Report Actions */}
-            <div style={{ display: 'flex', gap: '0.3rem' }}>
+            {/* Download/Export Report Actions with 1-second delays */}
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
               <button
-                onClick={() => onSaveReport(activeStats.name, {
-                  sent: activeStats.sent,
-                  opens: activeStats.opens,
-                  clicks: activeStats.clicks,
-                  conversions: activeStats.conversions,
-                  bounces: activeStats.bounces,
-                  unsubscribes: activeStats.unsubscribes
-                }, postMortem)}
+                onClick={triggerSaveReport}
                 className="btn btn-secondary"
-                style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px' }}
-                title="Save this report snapshot to history library"
+                disabled={isSaving}
+                style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem', borderRadius: 'var(--border-radius-sm)' }}
+                title="Save snapshot to archive"
               >
-                Save Snapshot
+                {isSaving ? <RefreshCw size={12} className="spin" /> : null}
+                {isSaving ? "Saving..." : "Save Snapshot"}
               </button>
               <button
-                onClick={() => window.print()}
+                onClick={triggerPrintReport}
                 className="btn btn-secondary"
-                style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px' }}
-                title="Export this page as a PDF or Print it"
+                disabled={isPrinting}
+                style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem', borderRadius: 'var(--border-radius-sm)' }}
+                title="Print report to PDF"
               >
-                Print/PDF
+                {isPrinting ? <RefreshCw size={12} className="spin" /> : null}
+                {isPrinting ? "Preparing PDF..." : "Print/PDF"}
               </button>
               <button
-                onClick={() => {
-                  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeStats, null, 2));
-                  const downloadAnchor = document.createElement('a');
-                  downloadAnchor.setAttribute("href", dataStr);
-                  downloadAnchor.setAttribute("download", `${activeStats.id}-report.json`);
-                  document.body.appendChild(downloadAnchor);
-                  downloadAnchor.click();
-                  downloadAnchor.remove();
-                }}
+                onClick={triggerExportJson}
                 className="btn btn-secondary"
-                style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px' }}
-                title="Export campaign metrics structure as JSON"
+                disabled={isExporting}
+                style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem', borderRadius: 'var(--border-radius-sm)' }}
+                title="Export metrics as JSON"
               >
-                Export JSON
+                {isExporting ? <RefreshCw size={12} className="spin" /> : null}
+                {isExporting ? "Exporting..." : "Export JSON"}
               </button>
             </div>
 
@@ -511,7 +553,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
                     fontWeight: '600',
                     border: 'none',
                     cursor: 'pointer',
-                    backgroundColor: activeChannelFilter === 'all' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+                    backgroundColor: activeChannelFilter === 'all' ? 'rgba(124, 58, 237, 0.15)' : 'transparent',
                     color: activeChannelFilter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
                     transition: 'all 0.15s ease'
                   }}
@@ -530,7 +572,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
                       textTransform: 'uppercase',
                       border: 'none',
                       cursor: 'pointer',
-                      backgroundColor: activeChannelFilter === ch ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+                      backgroundColor: activeChannelFilter === ch ? 'rgba(124, 58, 237, 0.15)' : 'transparent',
                       color: activeChannelFilter === ch ? 'var(--text-primary)' : 'var(--text-secondary)',
                       transition: 'all 0.15s ease'
                     }}
@@ -550,10 +592,10 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1.5rem', margin: '0.5rem 0' }}>
           <ProgressRing percentage={parseFloat(deliveryRate)} label="Delivered" color="var(--success)" />
           {activeStats.channel !== 'sms' && activeStats.channel !== 'iam' && (
-            <ProgressRing percentage={parseFloat(openRate)} label="Open Rate" color="var(--accent-cyan)" />
+            <ProgressRing percentage={parseFloat(openRate)} label="Open Rate" color="var(--accent-secondary)" />
           )}
-          <ProgressRing percentage={parseFloat(clickRate)} label="Click Rate" color="var(--accent-purple)" />
-          <ProgressRing percentage={parseFloat(convRate)} label="Conv. Rate" color="var(--accent-cyan)" />
+          <ProgressRing percentage={parseFloat(clickRate)} label="Click Rate" color="var(--accent-primary)" />
+          <ProgressRing percentage={parseFloat(convRate)} label="Conv. Rate" color="var(--success)" />
           <ProgressRing percentage={parseFloat(unsubRate)} label="Unsub Rate" color="var(--error)" />
         </div>
 
@@ -572,7 +614,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
           </div>
           <div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Unique Clicks</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: 'var(--accent-purple)' }}>{activeStats.clicks.toLocaleString()}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: 'var(--accent-primary)' }}>{activeStats.clicks.toLocaleString()}</div>
           </div>
           <div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Conversions</div>
@@ -590,10 +632,10 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
         <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Sparkles size={14} style={{ color: 'var(--accent-purple)' }} />
+              <Sparkles size={14} style={{ color: 'var(--accent-primary)' }} />
               AI Campaign Post-Mortem Analysis
             </h3>
-            <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', borderRadius: '9999px', backgroundColor: 'rgba(139,92,246,0.1)', color: 'var(--accent-purple)', fontWeight: '600' }}>
+            <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', borderRadius: '9999px', backgroundColor: 'rgba(124,58,237,0.1)', color: 'var(--accent-primary)', fontWeight: '600' }}>
               Gemini Flash
             </span>
           </div>
@@ -629,7 +671,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
                     padding: '0.75rem 1rem', 
                     backgroundColor: 'var(--bg-tertiary)', 
                     borderRadius: 'var(--border-radius-md)', 
-                    border: `1px solid ${issue.severity === 'critical' ? 'rgba(244,63,94,0.2)' : issue.severity === 'warning' ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}` 
+                    border: `1px solid ${issue.severity === 'critical' ? 'rgba(239,68,68,0.15)' : issue.severity === 'warning' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'}` 
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
@@ -651,9 +693,9 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
                         onClick={issue.action}
                         className="btn btn-primary"
                         disabled={loadingInsight !== null}
-                        style={{ padding: '0.15rem 0.4rem', fontSize: '0.65rem', borderRadius: '4px' }}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', borderRadius: '4px' }}
                       >
-                        {loadingInsight !== null ? <RefreshCw size={8} className="spin" /> : "Diagnose"}
+                        {loadingInsight === issue.id.replace('deliv-', '') ? <RefreshCw size={10} className="spin" /> : "Diagnose"}
                       </button>
                     )}
                   </div>
@@ -663,8 +705,8 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
                   </div>
 
                   {issue.isInsight && (
-                    <div style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: 'rgba(139,92,246,0.02)', border: '1px solid rgba(139,92,246,0.1)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      <strong style={{ color: 'var(--accent-purple)' }}>Diagnosis: </strong>{issue.isInsight}
+                    <div style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: 'rgba(124,58,237,0.02)', border: '1px solid rgba(124,58,237,0.15)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      <strong style={{ color: 'var(--accent-primary)' }}>Diagnosis: </strong>{issue.isInsight}
                     </div>
                   )}
                 </div>
@@ -707,7 +749,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
                 const hasInsight = anomalyInsights[key];
                 
                 return (
-                  <div key={key} style={{ padding: '0.85rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: `1px solid ${isAnomaly ? 'rgba(244,63,94,0.15)' : 'var(--border-color)'}` }}>
+                  <div key={key} style={{ padding: '0.85rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: `1px solid ${isAnomaly ? 'rgba(239,68,68,0.12)' : 'var(--border-color)'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <span style={{ fontWeight: '600', fontSize: '0.82rem', textTransform: 'capitalize' }}>
                         {key.startsWith('carrier_') ? key.replace('carrier_', '').toUpperCase() : key.toUpperCase()}
@@ -718,17 +760,17 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
                         <button
                           onClick={() => handleExplainAnomaly(key, key.toUpperCase(), client.rate)}
                           className="btn btn-primary"
-                          disabled={loadingInsight === key}
+                          disabled={loadingInsight !== null}
                           style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', borderRadius: '4px' }}
                         >
-                          {loadingInsight === key ? <RefreshCw size={10} className="spin" /> : "Diagnose Anomaly"}
+                          {loadingInsight === key ? <RefreshCw size={10} className="spin" /> : "Diagnose"}
                         </button>
                       )}
                     </div>
 
                     {hasInsight && (
-                      <div style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: 'rgba(139,92,246,0.02)', border: '1px solid rgba(139,92,246,0.1)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        <strong style={{ color: 'var(--accent-purple)' }}>Diagnosis: </strong>{hasInsight}
+                      <div style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: 'rgba(124,58,237,0.02)', border: '1px solid rgba(124,58,237,0.15)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        <strong style={{ color: 'var(--accent-primary)' }}>Diagnosis: </strong>{hasInsight}
                       </div>
                     )}
                   </div>
@@ -752,15 +794,15 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
         {/* A/B Significance curves */}
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            <Scale size={14} style={{ color: 'var(--accent-cyan)' }} />
+            <Scale size={14} style={{ color: 'var(--accent-secondary)' }} />
             Bayesian Significance Curve Overlay
           </h3>
           
           <div style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-md)', padding: '0.85rem' }}>
             {pathA && pathB ? (
               <svg viewBox="0 0 460 130" style={{ width: '100%', height: 'auto' }}>
-                <path d={pathA} fill="rgba(59, 130, 246, 0.08)" stroke="var(--accent-blue)" strokeWidth="1.5" />
-                <path d={pathB} fill="rgba(139, 92, 246, 0.12)" stroke="var(--accent-purple)" strokeWidth="1.5" />
+                <path d={pathA} fill="rgba(37, 99, 235, 0.04)" stroke="var(--accent-blue)" strokeWidth="2" />
+                <path d={pathB} fill="rgba(124, 58, 237, 0.06)" stroke="var(--accent-primary)" strokeWidth="2" />
               </svg>
             ) : (
               <div style={{ height: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>No variant distributions loaded for SMS/Push channels.</div>
@@ -784,7 +826,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
         {/* Liquid personalization Branch Attribution */}
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Layers size={14} style={{ color: 'var(--accent-purple)' }} />
+            <Layers size={14} style={{ color: 'var(--accent-primary)' }} />
             Dynamic Personalization Branches
           </h3>
           
@@ -804,7 +846,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
                   return (
                     <tr key={idx}>
                       <td style={{ fontSize: '0.8rem', fontWeight: '600' }}>{branch.name}</td>
-                      <td style={{ textAlign: 'right', fontWeight: '600', color: 'var(--accent-purple)' }}>{branch.ctr}%</td>
+                      <td style={{ textAlign: 'right', fontWeight: '600', color: 'var(--accent-primary)' }}>{branch.ctr}%</td>
                       <td style={{ textAlign: 'right', fontWeight: '600', color: 'var(--success)' }}>{branch.cvr}%</td>
                       <td style={{ textAlign: 'center' }}>
                         <span style={{

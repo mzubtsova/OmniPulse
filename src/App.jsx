@@ -11,7 +11,8 @@ import {
   X,
   Terminal,
   Printer,
-  ChevronDown
+  ChevronDown,
+  RefreshCw
 } from 'lucide-react';
 
 import { 
@@ -62,6 +63,11 @@ export default function App() {
   const [savedReports, setSavedReports] = useState([]);
   const [activeReportModal, setActiveReportModal] = useState(null);
 
+  // Loading animation states for headers
+  const [isChangingTheme, setIsChangingTheme] = useState(false);
+  const [isTogglingSettings, setIsTogglingSettings] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
   // Sync theme attribute to HTML tag on change
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -102,10 +108,24 @@ export default function App() {
     }
   };
 
-  // Toggle Theme between Light & Dark Mode
+  // Toggle Theme with forced 1-second delay
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-    triggerToast(`Switched theme to ${theme === 'dark' ? 'Light Mode' : 'Dark Mode'}`);
+    setIsChangingTheme(true);
+    setTimeout(() => {
+      const targetTheme = theme === 'dark' ? 'light' : 'dark';
+      setTheme(targetTheme);
+      setIsChangingTheme(false);
+      triggerToast(`Switched theme to ${targetTheme === 'dark' ? 'Dark Mode' : 'Light Mode'}`);
+    }, 1000);
+  };
+
+  // Toggle Settings panel with forced 1-second delay
+  const handleToggleSettings = () => {
+    setIsTogglingSettings(true);
+    setTimeout(() => {
+      setShowSettings(prev => !prev);
+      setIsTogglingSettings(false);
+    }, 1000);
   };
 
   // Save Report snapshot handler
@@ -119,12 +139,16 @@ export default function App() {
     triggerToast(`Snapshot of "${campaignName}" saved to archive!`);
   };
 
-  // Delete Report snapshot handler
+  // Delete Report snapshot handler with forced 1-second delay
   const handleDeleteReport = (reportId, e) => {
     e.stopPropagation();
-    const updated = deleteSavedReport(reportId);
-    setSavedReports(updated);
-    triggerToast("Snapshot deleted from history archive.");
+    setDeletingId(reportId);
+    setTimeout(() => {
+      const updated = deleteSavedReport(reportId);
+      setSavedReports(updated);
+      setDeletingId(null);
+      triggerToast("Snapshot deleted from history archive.");
+    }, 1000);
   };
 
   const activeCampaign = campaigns.find(c => c.id === activeCampaignId) || campaigns[0];
@@ -191,9 +215,10 @@ export default function App() {
             </div>
           )}
 
-          {/* Theme Switcher Button */}
+          {/* Theme Switcher Button with spinner delay */}
           <button
             onClick={toggleTheme}
+            disabled={isChangingTheme}
             className="btn btn-secondary"
             style={{
               padding: '0.45rem',
@@ -202,11 +227,18 @@ export default function App() {
               alignItems: 'center',
               justifyContent: 'center',
               border: '1px solid var(--border-color)',
-              backgroundColor: 'var(--bg-tertiary)'
+              backgroundColor: 'var(--bg-tertiary)',
+              cursor: 'pointer'
             }}
             title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
-            {theme === 'dark' ? <Sun size={15} style={{ color: 'var(--warning)' }} /> : <Moon size={15} style={{ color: 'var(--accent-primary)' }} />}
+            {isChangingTheme ? (
+              <RefreshCw size={15} className="spin" />
+            ) : theme === 'dark' ? (
+              <Sun size={15} style={{ color: 'var(--warning)' }} />
+            ) : (
+              <Moon size={15} style={{ color: 'var(--accent-primary)' }} />
+            )}
           </button>
 
           {/* API Mode Indicator */}
@@ -215,9 +247,10 @@ export default function App() {
             <span>{apiKey ? 'Live API Mode' : 'Sandbox Demo Mode'}</span>
           </div>
 
-          {/* Toggle Settings Button */}
+          {/* Toggle Settings Button with spinner delay */}
           <button
-            onClick={() => setShowSettings(!showSettings)}
+            onClick={handleToggleSettings}
+            disabled={isTogglingSettings}
             className={`btn ${showSettings ? 'btn-primary' : 'btn-secondary'}`}
             style={{
               padding: '0.4rem 0.85rem',
@@ -229,8 +262,12 @@ export default function App() {
               fontWeight: '600'
             }}
           >
-            <SettingsIcon size={14} className={showSettings ? 'spin' : ''} />
-            {showSettings ? 'Close' : 'Settings'}
+            {isTogglingSettings ? (
+              <RefreshCw size={14} className="spin" />
+            ) : (
+              <SettingsIcon size={14} className={showSettings ? 'spin' : ''} />
+            )}
+            {isTogglingSettings ? 'Syncing...' : showSettings ? 'Close' : 'Settings'}
           </button>
         </div>
       </header>
@@ -340,7 +377,7 @@ export default function App() {
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.65rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                         <div>Sent: <strong style={{ color: 'var(--text-primary)' }}>{report.stats?.sent?.toLocaleString() || '0'}</strong></div>
-                        <div>Clicks: <strong style={{ color: 'var(--accent-purple)' }}>{report.stats?.clicks?.toLocaleString() || '0'}</strong></div>
+                        <div>Clicks: <strong style={{ color: 'var(--accent-primary)' }}>{report.stats?.clicks?.toLocaleString() || '0'}</strong></div>
                         <div>Conversions: <strong style={{ color: 'var(--success)' }}>{report.stats?.conversions?.toLocaleString() || '0'}</strong></div>
                         <div>Bounces: <strong style={{ color: report.stats?.bounces > 0 ? 'var(--error)' : 'var(--text-muted)' }}>{report.stats?.bounces?.toLocaleString() || '0'}</strong></div>
                       </div>
@@ -357,10 +394,11 @@ export default function App() {
                         <button
                           onClick={(e) => handleDeleteReport(report.id, e)}
                           className="btn btn-secondary"
-                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px', color: 'var(--error)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                          disabled={deletingId === report.id}
+                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px', color: 'var(--error)', borderColor: 'rgba(239, 68, 68, 0.2)', width: '38px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           title="Delete snapshot from storage"
                         >
-                          <Trash2 size={12} />
+                          {deletingId === report.id ? <RefreshCw size={12} className="spin" /> : <Trash2 size={12} />}
                         </button>
                       </div>
                     </div>
@@ -455,7 +493,7 @@ export default function App() {
                 </div>
                 <div>
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>UNIQUE CLICKS</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--accent-purple)' }}>{activeReportModal.stats?.clicks?.toLocaleString()}</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--accent-primary)' }}>{activeReportModal.stats?.clicks?.toLocaleString()}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>CONVERSIONS</div>
