@@ -450,3 +450,43 @@ export const parseCsvCampaignLog = (csvText) => {
   
   return parsed;
 };
+
+// Storage for saved reports archive snapshots
+export const loadSavedReports = () => {
+  const data = localStorage.getItem('omnipulse_saved_reports');
+  if (data) {
+    try {
+      return JSON.parse(data);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+export const saveReportSnapshot = (campaignName, statsSnapshot, postMortemText) => {
+  const list = loadSavedReports();
+  const newReport = {
+    id: `snapshot-${Date.now()}`,
+    campaignName,
+    dateSaved: new Date().toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }),
+    stats: statsSnapshot,
+    postMortem: postMortemText
+  };
+  const updated = [newReport, ...list];
+  localStorage.setItem('omnipulse_saved_reports', JSON.stringify(updated));
+  return updated;
+};
+
+export const deleteSavedReport = (reportId) => {
+  const list = loadSavedReports();
+  const filtered = list.filter(r => r.id !== reportId);
+  localStorage.setItem('omnipulse_saved_reports', JSON.stringify(filtered));
+  return filtered;
+};

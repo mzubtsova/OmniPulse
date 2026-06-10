@@ -83,7 +83,7 @@ const ProgressRing = ({ percentage, label, color }) => {
   );
 };
 
-export default function Overview({ campaign, apiKey }) {
+export default function Overview({ campaign, apiKey, onSaveReport }) {
   const [postMortem, setPostMortem] = useState('');
   const [loadingReport, setLoadingReport] = useState(false);
   const [hoveredHotspot, setHoveredHotspot] = useState(null);
@@ -449,10 +449,56 @@ export default function Overview({ campaign, apiKey }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
           <div>
             <h2 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Post-Deployment Executive Summary</h2>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Status: <strong style={{ color: 'var(--success)' }}>Report Finalized</strong> &bull; Synced {campaign.lastSynced}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Status: <strong style={{ color: 'var(--success)' }}>Report Finalized</strong> &bull; Synced {campaign.lastSynced}</p>
+              <span className="api-badge" style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem', borderStyle: 'dashed' }}>Channel: {activeStats.channel?.toUpperCase()}</span>
+            </div>
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            {/* Download/Export Report Actions */}
+            <div style={{ display: 'flex', gap: '0.3rem' }}>
+              <button
+                onClick={() => onSaveReport(activeStats.name, {
+                  sent: activeStats.sent,
+                  opens: activeStats.opens,
+                  clicks: activeStats.clicks,
+                  conversions: activeStats.conversions,
+                  bounces: activeStats.bounces,
+                  unsubscribes: activeStats.unsubscribes
+                }, postMortem)}
+                className="btn btn-secondary"
+                style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px' }}
+                title="Save this report snapshot to history library"
+              >
+                Save Snapshot
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="btn btn-secondary"
+                style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px' }}
+                title="Export this page as a PDF or Print it"
+              >
+                Print/PDF
+              </button>
+              <button
+                onClick={() => {
+                  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeStats, null, 2));
+                  const downloadAnchor = document.createElement('a');
+                  downloadAnchor.setAttribute("href", dataStr);
+                  downloadAnchor.setAttribute("download", `${activeStats.id}-report.json`);
+                  document.body.appendChild(downloadAnchor);
+                  downloadAnchor.click();
+                  downloadAnchor.remove();
+                }}
+                className="btn btn-secondary"
+                style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px' }}
+                title="Export campaign metrics structure as JSON"
+              >
+                Export JSON
+              </button>
+            </div>
+
             {/* Segmented Channel Filter */}
             {campaign.channels && (
               <div style={{ display: 'flex', gap: '0.2rem', backgroundColor: 'var(--bg-primary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
@@ -470,7 +516,7 @@ export default function Overview({ campaign, apiKey }) {
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  All Channels
+                  All
                 </button>
                 {campaign.channels.map(ch => (
                   <button

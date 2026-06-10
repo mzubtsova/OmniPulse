@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Sparkles, Terminal, Copy, Check, CornerDownRight, Database, HelpCircle } from 'lucide-react';
+import { Search, Sparkles, Terminal, Copy, Check, CornerDownRight, Database, RefreshCw } from 'lucide-react';
 import { queryCampaignDataWithAi } from '../services/gemini';
 
 export default function AiExplorer({ campaign, apiKey }) {
@@ -44,6 +44,10 @@ export default function AiExplorer({ campaign, apiKey }) {
     { label: "Audit Liquid segment conversions", text: "Show triggered volume, clicks and conversion rates across my dynamic Liquid branches." },
     { label: "Deliverability by inbox client", text: "Check open rates and sent volume grouped by email client provider." }
   ];
+
+  // Defensive array checks to prevent React render crashes (black screens)
+  const headers = results && Array.isArray(results.resultHeaders) ? results.resultHeaders : [];
+  const rows = results && Array.isArray(results.resultRows) ? results.resultRows : [];
 
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -91,14 +95,11 @@ export default function AiExplorer({ campaign, apiKey }) {
             <button
               key={idx}
               onClick={(e) => handleQuerySubmit(e, q.text)}
-              className="sub-tab"
+              className="btn btn-secondary"
               style={{
                 fontSize: '0.75rem',
                 padding: '0.35rem 0.65rem',
-                border: '1px solid var(--border-color)',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                backgroundColor: 'var(--bg-tertiary)'
+                cursor: 'pointer'
               }}
             >
               {q.label}
@@ -110,7 +111,7 @@ export default function AiExplorer({ campaign, apiKey }) {
       {/* Loading Skeleton */}
       {loading && (
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '3rem', textAlign: 'center' }}>
-          <RefreshCw size={32} className="spin" style={{ color: 'var(--accent-purple)', margin: '0 auto' }} />
+          <RefreshCw size={32} className="spin" style={{ color: 'var(--accent-primary)', margin: '0 auto' }} />
           <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>AI is scanning database schema and generating metrics ledger...</span>
         </div>
       )}
@@ -123,7 +124,7 @@ export default function AiExplorer({ campaign, apiKey }) {
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h4 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Terminal size={14} style={{ color: 'var(--accent-cyan)' }} />
+                <Terminal size={14} style={{ color: 'var(--accent-secondary)' }} />
                 AI Translated SQL Query
               </h4>
               <button
@@ -141,16 +142,16 @@ export default function AiExplorer({ campaign, apiKey }) {
               border: '1px solid var(--border-color)',
               borderRadius: 'var(--border-radius-md)',
               padding: '1.25rem',
-              color: 'var(--accent-cyan)',
+              color: 'var(--accent-secondary)',
               fontFamily: 'var(--font-mono)',
               fontSize: '0.8rem',
               lineHeight: '1.5',
               overflowX: 'auto',
               whiteSpace: 'pre-wrap'
-            }}>{results.sql}</pre>
+            }}>{results.sql || '-- No SQL query generated.'}</pre>
             
             <div style={{ display: 'flex', gap: '0.6rem', padding: '0.85rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', marginTop: 'auto' }}>
-              <Database size={14} style={{ color: 'var(--accent-purple)', flexShrink: 0, marginTop: '2px' }} />
+              <Database size={14} style={{ color: 'var(--accent-primary)', flexShrink: 0, marginTop: '2px' }} />
               <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
                 Query targeted against live event logs tracking schema (Snowflake/Currents events ledger).
               </p>
@@ -168,21 +169,44 @@ export default function AiExplorer({ campaign, apiKey }) {
               <table className="audit-table">
                 <thead>
                   <tr>
-                    {results.resultHeaders?.map((h, i) => (
-                      <th key={i}>{h}</th>
+                    {headers.map((h, i) => (
+                      <th key={i}>{String(h)}</th>
                     ))}
+                    {headers.length === 0 && <th>Results</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {results.resultRows?.map((row, rowIdx) => (
-                    <tr key={rowIdx}>
-                      {row.map((cell, cellIdx) => (
-                        <td key={cellIdx} style={{ fontWeight: cellIdx === 0 ? '600' : '700', color: cellIdx > 1 ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                          {cell}
-                        </td>
-                      ))}
+                  {rows.map((row, rowIdx) => {
+                    // Safe parsing: if row is not an array, convert to array representation
+                    const cells = Array.isArray(row)
+                      ? row
+                      : typeof row === 'object' && row !== null
+                        ? Object.values(row)
+                        : [row];
+
+                    return (
+                      <tr key={rowIdx}>
+                        {cells.map((cell, cellIdx) => (
+                          <td 
+                            key={cellIdx} 
+                            style={{ 
+                              fontWeight: cellIdx === 0 ? '600' : '500', 
+                              color: cellIdx === 0 ? 'var(--text-primary)' : 'var(--text-secondary)' 
+                            }}
+                          >
+                            {cell !== null && cell !== undefined ? String(cell) : ''}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                  {rows.length === 0 && (
+                    <tr>
+                      <td style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1.5rem' }}>
+                        No records returned.
+                      </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
