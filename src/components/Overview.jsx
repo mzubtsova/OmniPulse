@@ -44,7 +44,7 @@ function parseMarkdown(text) {
   return html;
 }
 
-const ProgressRing = ({ percentage, label, color, subtitle }) => {
+const ProgressRing = ({ percentage, label, color }) => {
   const radius = 50;
   const stroke = 6;
   const normalizedRadius = radius - stroke * 2;
@@ -89,6 +89,12 @@ export default function Overview({ campaign, apiKey }) {
   const [hoveredHotspot, setHoveredHotspot] = useState(null);
   const [anomalyInsights, setAnomalyInsights] = useState({});
   const [loadingInsight, setLoadingInsight] = useState(null);
+  const [activeChannelFilter, setActiveChannelFilter] = useState('all');
+
+  // Reset channel filter on campaign swap
+  useEffect(() => {
+    setActiveChannelFilter('all');
+  }, [campaign.id]);
 
   // Fetch AI Post-Mortem Report on campaign change
   useEffect(() => {
@@ -110,6 +116,15 @@ export default function Overview({ campaign, apiKey }) {
     return () => { active = false; };
   }, [campaign.id, apiKey]);
 
+  // Project active campaign stats based on channel filter selection
+  const activeStats = campaign.channels && activeChannelFilter !== 'all' && campaign.channelStats?.[activeChannelFilter]
+    ? {
+        ...campaign,
+        ...campaign.channelStats[activeChannelFilter],
+        channel: activeChannelFilter
+      }
+    : campaign;
+
   const handleExplainAnomaly = async (clientKey, clientName, rate) => {
     setLoadingInsight(clientKey);
     try {
@@ -128,23 +143,23 @@ export default function Overview({ campaign, apiKey }) {
     return { bg: 'rgba(244, 63, 94, 0.12)', text: 'var(--error)', label: 'Failing' };
   };
 
-  // Metrics conversions
-  const delivered = campaign.sent - (campaign.bounces || 0);
-  const deliveryRate = campaign.sent > 0 ? ((delivered / campaign.sent) * 100).toFixed(1) : 100;
-  const openRate = campaign.sent > 0 ? ((campaign.opens / campaign.sent) * 100).toFixed(1) : 0;
-  const clickRate = campaign.sent > 0 ? ((campaign.clicks / campaign.sent) * 100).toFixed(1) : 0;
-  const convRate = campaign.sent > 0 ? ((campaign.conversions / campaign.sent) * 100).toFixed(1) : 0;
-  const unsubRate = campaign.sent > 0 ? ((campaign.unsubscribes / campaign.sent) * 100).toFixed(2) : 0;
-  const bounceRate = campaign.sent > 0 ? (((campaign.bounces || 0) / campaign.sent) * 100).toFixed(2) : 0;
+  // Metrics conversions mapped to activeStats projection
+  const delivered = activeStats.sent - (activeStats.bounces || 0);
+  const deliveryRate = activeStats.sent > 0 ? ((delivered / activeStats.sent) * 100).toFixed(1) : 100;
+  const openRate = activeStats.sent > 0 ? ((activeStats.opens / activeStats.sent) * 100).toFixed(1) : 0;
+  const clickRate = activeStats.sent > 0 ? ((activeStats.clicks / activeStats.sent) * 100).toFixed(1) : 0;
+  const convRate = activeStats.sent > 0 ? ((activeStats.conversions / activeStats.sent) * 100).toFixed(1) : 0;
+  const unsubRate = activeStats.sent > 0 ? ((activeStats.unsubscribes / activeStats.sent) * 100).toFixed(2) : 0;
+  const bounceRate = activeStats.sent > 0 ? (((activeStats.bounces || 0) / activeStats.sent) * 100).toFixed(2) : 0;
   const overallRate = parseFloat(openRate);
 
-  // Compute A/B significance metrics
-  const stats = calculateABStats(campaign.variants);
+  // Compute A/B significance metrics based on activeStats projection
+  const stats = calculateABStats(activeStats.variants);
 
   // Generate SVG curve points
   const generateCurvePaths = (width = 460, height = 130) => {
-    const varA = campaign.variants?.a;
-    const varB = campaign.variants?.b;
+    const varA = activeStats.variants?.a;
+    const varB = activeStats.variants?.b;
     if (!varA || !varB) return { pathA: '', pathB: '', pA: 0, pB: 0 };
 
     const pA = varA.sent > 0 ? (varA.opens || varA.clicks) / varA.sent : 0;
@@ -191,12 +206,12 @@ export default function Overview({ campaign, apiKey }) {
 
   // Simulated clickmap iframe render
   const renderClickmapFrame = () => {
-    if (campaign.channel === 'email' && campaign.templateHtml) {
+    if (activeStats.channel === 'email' && activeStats.templateHtml) {
       return (
         <div style={{ position: 'relative', width: '100%', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-md)', overflow: 'hidden', backgroundColor: '#fff' }}>
           <div className="hotspot-container" style={{ position: 'relative', height: '360px', width: '100%' }}>
-            <iframe title="Attribution Frame" srcDoc={campaign.templateHtml} style={{ width: '100%', height: '100%', border: 'none' }} />
-            {campaign.hotspots?.map(spot => (
+            <iframe title="Attribution Frame" srcDoc={activeStats.templateHtml} style={{ width: '100%', height: '100%', border: 'none' }} />
+            {activeStats.hotspots?.map(spot => (
               <div
                 key={spot.id}
                 className="hotspot-trigger"
@@ -224,8 +239,7 @@ export default function Overview({ campaign, apiKey }) {
       );
     }
 
-    // Push notification style preview
-    if (campaign.channel === 'push') {
+    if (activeStats.channel === 'push') {
       return (
         <div style={{
           height: '360px',
@@ -257,13 +271,61 @@ export default function Overview({ campaign, apiKey }) {
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Now</span>
             </div>
             <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#fff', marginBottom: '0.2rem' }}>
-              {campaign.subjectLine}
+              {activeStats.subjectLine}
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.3' }}>
-              {campaign.pushBody || "Get double points on all Blizzards today! 🍦 Open the app to check your loyalty tier."}
+              {activeStats.pushBody || "Beat the heat with a free small Blizzard on us. Tap to load reward in app."}
             </div>
           </div>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Push Click Action CTR: <strong>{campaign.clicks ? ((campaign.clicks / campaign.sent) * 100).toFixed(1) : 0}%</strong></span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Push Click Action CTR: <strong>{activeStats.clicks ? ((activeStats.clicks / activeStats.sent) * 100).toFixed(1) : 0}%</strong></span>
+        </div>
+      );
+    }
+
+    if (activeStats.channel === 'sms') {
+      return (
+        <div style={{
+          height: '360px',
+          backgroundColor: '#0c101b',
+          borderRadius: 'var(--border-radius-md)',
+          border: '1px solid var(--border-color)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2.5rem',
+          gap: '1.5rem'
+        }}>
+          <div style={{
+            width: '100%',
+            maxWidth: '280px',
+            backgroundColor: '#1c1c1e',
+            borderRadius: '30px',
+            padding: '1.5rem 1rem',
+            border: '4px solid #3a3a3c',
+            boxShadow: '0 12px 30px rgba(0,0,0,0.6)',
+            display: 'flex',
+            flexDirection: 'column',
+            height: '240px',
+            justifyContent: 'flex-end'
+          }}>
+            <div style={{
+              alignSelf: 'flex-start',
+              backgroundColor: '#262629',
+              color: '#fff',
+              borderRadius: '16px 16px 16px 4px',
+              padding: '0.75rem 1rem',
+              fontSize: '0.8rem',
+              lineHeight: '1.35',
+              maxWidth: '90%',
+              marginBottom: '0.5rem',
+              border: '1px solid rgba(255,255,255,0.05)'
+            }}>
+              {activeStats.smsBody || "Dairy Queen: Summer is here! Click to claim your FREE small Blizzard now: dq.com/s-free (Reply STOP to unsub)"}
+            </div>
+            <div style={{ fontSize: '0.65rem', color: '#8e8e93', alignSelf: 'center', marginBottom: 'auto' }}>Text Message &bull; Today 8:00 PM</div>
+          </div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>SMS Click-Through CTR: <strong>{activeStats.clicks ? ((activeStats.clicks / activeStats.sent) * 100).toFixed(1) : 0}%</strong></span>
         </div>
       );
     }
@@ -288,26 +350,39 @@ export default function Overview({ campaign, apiKey }) {
   // Compile campaign failure events
   const getFailuresAndRisks = () => {
     const issues = [];
+    const filter = activeChannelFilter === 'all' ? null : activeChannelFilter;
 
     // Deliverability anomalies
     if (campaign.deliverability) {
       Object.entries(campaign.deliverability).forEach(([client, data]) => {
         const deviation = data.rate - overallRate;
         if (deviation <= -4.0) {
-          issues.push({
-            id: `deliv-${client}`,
-            type: 'Deliverability Drop',
-            severity: 'critical',
-            message: `${client.toUpperCase()} open rate is anomalous at ${data.rate}% (${deviation.toFixed(1)}% below campaign average).`,
-            action: () => handleExplainAnomaly(client, client.toUpperCase(), data.rate),
-            isInsight: anomalyInsights[client]
-          });
+          // If channel filter matches client type
+          const isEmailClient = ['gmail', 'outlook', 'yahoo'].includes(client);
+          const isPushClient = ['ios', 'android'].includes(client);
+          const isSmsClient = ['carrier_att', 'carrier_tmobile'].includes(client);
+
+          if (
+            !filter ||
+            (filter === 'email' && isEmailClient) ||
+            (filter === 'push' && isPushClient) ||
+            (filter === 'sms' && isSmsClient)
+          ) {
+            issues.push({
+              id: `deliv-${client}`,
+              type: `[${isEmailClient ? 'Email' : isPushClient ? 'Push' : 'SMS'}] Deliverability Drop`,
+              severity: 'critical',
+              message: `${client.toUpperCase()} placement rate is anomalous at ${data.rate}% (${deviation.toFixed(1)}% below average).`,
+              action: () => handleExplainAnomaly(client, client.toUpperCase(), data.rate),
+              isInsight: anomalyInsights[client]
+            });
+          }
         }
       });
     }
 
-    // Logic branches failures / low conversion yields
-    if (campaign.branches) {
+    // Logic branches failures / low conversion yields (only when on 'all' or relevant view)
+    if (campaign.branches && (!filter || filter === 'email')) {
       campaign.branches.forEach(branch => {
         if (branch.ctr < 4.0) {
           issues.push({
@@ -321,17 +396,17 @@ export default function Overview({ campaign, apiKey }) {
     }
 
     // Bounces
-    if (campaign.bounces && campaign.bounces > 0) {
+    if (activeStats.bounces && activeStats.bounces > 0) {
       issues.push({
-        id: 'bounce-rate',
-        type: 'Delivery Failure',
+        id: `bounce-${activeChannelFilter}`,
+        type: `[${activeChannelFilter.toUpperCase()}] Delivery Failure`,
         severity: 'critical',
-        message: `${campaign.bounces.toLocaleString()} hard/soft bounces detected (${bounceRate}% failure rate).`
+        message: `${activeStats.bounces.toLocaleString()} hard/soft bounces detected (${bounceRate}% failure rate).`
       });
     }
 
     // Mock HTML/CSS layout checks
-    if (campaign.channel === 'email') {
+    if (activeStats.channel === 'email') {
       issues.push({
         id: 'auth-status',
         type: 'SPF/DKIM Validation',
@@ -345,6 +420,25 @@ export default function Overview({ campaign, apiKey }) {
 
   const failuresList = getFailuresAndRisks();
 
+  // Filter deliverability for the anomalies grid display based on active channel
+  const getFilteredDeliverabilityKeys = () => {
+    if (!campaign.deliverability) return [];
+    const filter = activeChannelFilter;
+    const allKeys = Object.keys(campaign.deliverability);
+    if (filter === 'all') return allKeys;
+
+    const emailKeys = ['gmail', 'outlook', 'yahoo'];
+    const pushKeys = ['ios', 'android'];
+    const smsKeys = ['carrier_att', 'carrier_tmobile'];
+
+    if (filter === 'email') return allKeys.filter(k => emailKeys.includes(k));
+    if (filter === 'push') return allKeys.filter(k => pushKeys.includes(k));
+    if (filter === 'sms') return allKeys.filter(k => smsKeys.includes(k));
+    return allKeys;
+  };
+
+  const deliverabilityKeys = getFilteredDeliverabilityKeys();
+
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
@@ -357,16 +451,59 @@ export default function Overview({ campaign, apiKey }) {
             <h2 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Post-Deployment Executive Summary</h2>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Status: <strong style={{ color: 'var(--success)' }}>Report Finalized</strong> &bull; Synced {campaign.lastSynced}</p>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            {/* Segmented Channel Filter */}
+            {campaign.channels && (
+              <div style={{ display: 'flex', gap: '0.2rem', backgroundColor: 'var(--bg-primary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <button
+                  onClick={() => setActiveChannelFilter('all')}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.75rem',
+                    borderRadius: '6px',
+                    fontWeight: '600',
+                    border: 'none',
+                    cursor: 'pointer',
+                    backgroundColor: activeChannelFilter === 'all' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+                    color: activeChannelFilter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  All Channels
+                </button>
+                {campaign.channels.map(ch => (
+                  <button
+                    key={ch}
+                    onClick={() => setActiveChannelFilter(ch)}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.75rem',
+                      borderRadius: '6px',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      border: 'none',
+                      cursor: 'pointer',
+                      backgroundColor: activeChannelFilter === ch ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+                      color: activeChannelFilter === ch ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {ch}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <span style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
-              Subject: {campaign.subjectLine}
+              Subject: {activeStats.subjectLine}
             </span>
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1.5rem', margin: '0.5rem 0' }}>
           <ProgressRing percentage={parseFloat(deliveryRate)} label="Delivered" color="var(--success)" />
-          {campaign.channel !== 'sms' && campaign.channel !== 'iam' && (
+          {activeStats.channel !== 'sms' && activeStats.channel !== 'iam' && (
             <ProgressRing percentage={parseFloat(openRate)} label="Open Rate" color="var(--accent-cyan)" />
           )}
           <ProgressRing percentage={parseFloat(clickRate)} label="Click Rate" color="var(--accent-purple)" />
@@ -377,11 +514,11 @@ export default function Overview({ campaign, apiKey }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
           <div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Volume Sent</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem' }}>{campaign.sent.toLocaleString()}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem' }}>{activeStats.sent.toLocaleString()}</div>
           </div>
           <div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Bounces</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: campaign.bounces > 0 ? 'var(--error)' : 'var(--text-primary)' }}>{campaign.bounces?.toLocaleString() || '0'}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: activeStats.bounces > 0 ? 'var(--error)' : 'var(--text-primary)' }}>{activeStats.bounces?.toLocaleString() || '0'}</div>
           </div>
           <div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Delivered</div>
@@ -389,11 +526,11 @@ export default function Overview({ campaign, apiKey }) {
           </div>
           <div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Unique Clicks</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: 'var(--accent-purple)' }}>{campaign.clicks.toLocaleString()}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: 'var(--accent-purple)' }}>{activeStats.clicks.toLocaleString()}</div>
           </div>
           <div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Conversions</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: 'var(--success)' }}>{campaign.conversions.toLocaleString()}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '0.15rem', color: 'var(--success)' }}>{activeStats.conversions.toLocaleString()}</div>
           </div>
         </div>
       </div>
@@ -497,16 +634,75 @@ export default function Overview({ campaign, apiKey }) {
       </div>
 
       {/* ========================================================================= */}
-      {/* PANEL 3: DIAGNOSTIC DIAGRAMS (CLICKMAP & A/B TEST PROBABILITY CURVES)       */}
+      {/* PANEL 3: DIAGNOSTIC DIAGRAMS & DELIVERABILITY RADAR                        */}
       {/* ========================================================================= */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
         
-        {/* Clickmap */}
+        {/* Clickmap or Channel Previews */}
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: '700' }}>Attribution clickmap Hotspots</h3>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: '700' }}>
+            {activeStats.channel === 'email' ? 'Attribution clickmap Hotspots' : `${activeStats.channel?.toUpperCase()} Channel Preview`}
+          </h3>
           {renderClickmapFrame()}
         </div>
 
+        {/* Deliverability Warnings & Anomalies */}
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: '700' }}>
+            {activeChannelFilter === 'all' ? 'Deliverability Placement Radar' : `${activeChannelFilter.toUpperCase()} Placement Radar`}
+          </h3>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '360px', paddingRight: '0.25rem' }}>
+            {deliverabilityKeys.length > 0 ? (
+              deliverabilityKeys.map((key) => {
+                const client = campaign.deliverability[key];
+                const dev = parseFloat((client.rate - overallRate).toFixed(1));
+                const isAnomaly = dev <= -4.0;
+                const hasInsight = anomalyInsights[key];
+                
+                return (
+                  <div key={key} style={{ padding: '0.85rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: `1px solid ${isAnomaly ? 'rgba(244,63,94,0.15)' : 'var(--border-color)'}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <span style={{ fontWeight: '600', fontSize: '0.82rem', textTransform: 'capitalize' }}>
+                        {key.startsWith('carrier_') ? key.replace('carrier_', '').toUpperCase() : key.toUpperCase()}
+                      </span>
+                      <span style={{ fontSize: '0.8rem', color: isAnomaly ? 'var(--error)' : 'var(--success)', fontWeight: '700' }}>{client.rate}% delivery rate</span>
+                      
+                      {isAnomaly && !hasInsight && (
+                        <button
+                          onClick={() => handleExplainAnomaly(key, key.toUpperCase(), client.rate)}
+                          className="btn btn-primary"
+                          disabled={loadingInsight === key}
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', borderRadius: '4px' }}
+                        >
+                          {loadingInsight === key ? <RefreshCw size={10} className="spin" /> : "Diagnose Anomaly"}
+                        </button>
+                      )}
+                    </div>
+
+                    {hasInsight && (
+                      <div style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: 'rgba(139,92,246,0.02)', border: '1px solid rgba(139,92,246,0.1)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        <strong style={{ color: 'var(--accent-purple)' }}>Diagnosis: </strong>{hasInsight}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                No deliverability records matching this channel filter.
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
+
+      {/* ========================================================================= */}
+      {/* PANEL 4: A/B TESTING & LIQUID LOGIC BRANCH ATTRIBUTION                     */}
+      {/* ========================================================================= */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
+        
         {/* A/B Significance curves */}
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -521,7 +717,7 @@ export default function Overview({ campaign, apiKey }) {
                 <path d={pathB} fill="rgba(139, 92, 246, 0.12)" stroke="var(--accent-purple)" strokeWidth="1.5" />
               </svg>
             ) : (
-              <div style={{ height: '130px', display: 'flex', alignItems: 'center', justifyCenter: 'center' }}>No variant distributions.</div>
+              <div style={{ height: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>No variant distributions loaded for SMS/Push channels.</div>
             )}
           </div>
 
@@ -539,62 +735,51 @@ export default function Overview({ campaign, apiKey }) {
           </div>
         </div>
 
-      </div>
-
-      {/* ========================================================================= */}
-      {/* PANEL 4: LIQUID LOGIC BRANCH ATTRIBUTION LEDGER                             */}
-      {/* ========================================================================= */}
-      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Layers size={14} style={{ color: 'var(--accent-purple)' }} />
-          Liquid personalization Branch Attribution
-        </h3>
-        
-        <div style={{ overflowX: 'auto' }}>
-          <table className="audit-table">
-            <thead>
-              <tr>
-                <th>Segment Name</th>
-                <th>Expression Path</th>
-                <th style={{ textAlign: 'right' }}>Triggered Volume</th>
-                <th style={{ textAlign: 'right' }}>Unique Clicks</th>
-                <th style={{ textAlign: 'right' }}>CTR</th>
-                <th style={{ textAlign: 'right' }}>Conversions</th>
-                <th style={{ textAlign: 'right' }}>CVR</th>
-                <th style={{ textAlign: 'center' }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {campaign.branches?.map((branch, idx) => {
-                const badge = getBranchBadgeStyle(branch.ctr);
-                return (
-                  <tr key={idx}>
-                    <td style={{ fontWeight: '600', fontSize: '0.85rem' }}>{branch.name}</td>
-                    <td style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{branch.expression}</td>
-                    <td style={{ textAlign: 'right', fontWeight: '500' }}>{branch.triggered?.toLocaleString() || '-'}</td>
-                    <td style={{ textAlign: 'right', fontWeight: '600' }}>{branch.clicks.toLocaleString()}</td>
-                    <td style={{ textAlign: 'right', fontWeight: '600', color: 'var(--accent-purple)' }}>{branch.ctr}%</td>
-                    <td style={{ textAlign: 'right', fontWeight: '500' }}>{branch.conversions?.toLocaleString() || '-'}</td>
-                    <td style={{ textAlign: 'right', fontWeight: '600', color: 'var(--success)' }}>{branch.cvr ? `${branch.cvr}%` : '-'}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      <span style={{
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontSize: '0.7rem',
-                        fontWeight: '700',
-                        backgroundColor: badge.bg,
-                        color: badge.text
-                      }}>{badge.label}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {/* Liquid personalization Branch Attribution */}
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Layers size={14} style={{ color: 'var(--accent-purple)' }} />
+            Dynamic Personalization Branches
+          </h3>
+          
+          <div style={{ overflowX: 'auto', maxHeight: '200px' }}>
+            <table className="audit-table">
+              <thead>
+                <tr>
+                  <th>Segment</th>
+                  <th style={{ textAlign: 'right' }}>CTR</th>
+                  <th style={{ textAlign: 'right' }}>CVR</th>
+                  <th style={{ textAlign: 'center' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {campaign.branches?.map((branch, idx) => {
+                  const badge = getBranchBadgeStyle(branch.ctr);
+                  return (
+                    <tr key={idx}>
+                      <td style={{ fontSize: '0.8rem', fontWeight: '600' }}>{branch.name}</td>
+                      <td style={{ textAlign: 'right', fontWeight: '600', color: 'var(--accent-purple)' }}>{branch.ctr}%</td>
+                      <td style={{ textAlign: 'right', fontWeight: '600', color: 'var(--success)' }}>{branch.cvr}%</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span style={{
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontSize: '0.7rem',
+                          fontWeight: '700',
+                          backgroundColor: badge.bg,
+                          color: badge.text
+                        }}>{badge.label}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
+
       </div>
 
     </div>
   );
 }
-

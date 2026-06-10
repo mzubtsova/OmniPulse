@@ -140,6 +140,107 @@ export const SEED_CAMPAIGNS = [
       a: { subject: 'Get App & Unlock Free Ice Cream 🍦', sent: 42500, opens: 42500, clicks: 12750, ctr: 30.0 },
       b: { subject: 'Download DQ App for Faster Rewards ⚡', sent: 42500, opens: 42500, clicks: 9350, ctr: 22.0 }
     }
+  },
+  {
+    id: 'dq-summer-multichannel',
+    name: 'Dairy Queen Summer Kickoff Blast',
+    channels: ['email', 'push', 'sms'],
+    channel: 'multi',
+    version: 'v1.0',
+    status: 'Completed',
+    lastSynced: '1 day ago',
+    sent: 680000,
+    opens: 174000,
+    clicks: 54400,
+    conversions: 22400,
+    unsubscribes: 1840,
+    bounces: 1920,
+    subjectLine: 'Summer is HERE: Free Blizzard Day! 🍦',
+    channelStats: {
+      email: {
+        sent: 400000,
+        opens: 120000,
+        clicks: 44000,
+        conversions: 16000,
+        unsubscribes: 800,
+        bounces: 400,
+        subjectLine: 'Summer is HERE: Free Blizzard Day! 🍦',
+        templateHtml: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dairy Queen Free Blizzard Day</title>
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; background-color: #f3f4f6; padding: 20px; margin: 0; }
+    .card { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .header { background-color: #0284c7; padding: 30px; text-align: center; color: #ffffff; }
+    .content { padding: 30px; color: #333333; line-height: 1.6; font-size: 14px; }
+    .btn { display: inline-block; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; background-color: #f43f5e; color: #ffffff !important; }
+    .footer { background-color: #f9fafb; padding: 20px; text-align: center; font-size: 11px; color: #666666; border-top: 1px solid #e5e7eb; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1 style="margin: 0; font-size: 24px; color: #ffffff;">🍦 FREE BLIZZARD DAY 🍦</h1>
+    </div>
+    <div class="content">
+      <h2>Hi {{ user.first_name | default: 'Friend' }}!</h2>
+      <p>Summer is officially here, and we want to help you cool down. Today only, get a FREE small Blizzard coupon valid at any participating location.</p>
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="http://example.com/freeblizzard" class="btn">Claim Free Blizzard Now</a>
+      </p>
+      <p>Enjoy your summer treat!</p>
+    </div>
+    <div class="footer">
+      <p>© 2026 Dairy Queen. If you wish to unsubscribe, click <a href="#" style="color: #94a3b8;">here</a>.</p>
+    </div>
+  </div>
+</body>
+</html>`,
+        hotspots: [
+          { id: 'h1', label: 'Hero Header Banner', x: 50, y: 15, clicks: 9800, ctr: 2.45 },
+          { id: 'h2', label: 'Claim Blizzard CTA Button', x: 50, y: 62, clicks: 33400, ctr: 8.35 },
+          { id: 'h3', label: 'Unsubscribe Footer Link', x: 50, y: 88, clicks: 800, ctr: 0.2 }
+        ]
+      },
+      push: {
+        sent: 200000,
+        opens: 30000,
+        clicks: 8000,
+        conversions: 4800,
+        unsubscribes: 400,
+        bounces: 1200,
+        subjectLine: 'Get a free Blizzard today only! 🍦',
+        pushBody: 'Beat the heat with a free small Blizzard on us. Tap to load reward in app.'
+      },
+      sms: {
+        sent: 80000,
+        opens: 24000,
+        clicks: 2400,
+        conversions: 1600,
+        unsubscribes: 640,
+        bounces: 320,
+        smsBody: 'Dairy Queen: Summer is here! Click to claim your FREE small Blizzard now: dq.com/s-free (Reply STOP to unsub)'
+      }
+    },
+    branches: [
+      { name: 'VIP Gold Segment', expression: "tier == 'Gold'", triggered: 180000, clicks: 25200, conversions: 12600, ctr: 14.0, cvr: 7.0 },
+      { name: 'Silver Tier Segment', expression: "tier == 'Silver'", triggered: 250000, clicks: 20000, conversions: 7500, ctr: 8.0, cvr: 3.0 },
+      { name: 'Standard Fallback', expression: "default_fallback", triggered: 250000, clicks: 9200, conversions: 2300, ctr: 3.68, cvr: 0.92 }
+    ],
+    deliverability: {
+      gmail: { opens: 72000, total: 240000, rate: 30.0, status: 'Normal' },
+      outlook: { opens: 36000, total: 120000, rate: 30.0, status: 'Normal' },
+      ios: { opens: 25500, total: 170000, rate: 15.0, status: 'Normal' },
+      android: { opens: 7500, total: 50000, rate: 15.0, status: 'Normal' },
+      carrier_att: { opens: 13000, total: 40000, rate: 32.5, status: 'Normal' },
+      carrier_tmobile: { opens: 8000, total: 30000, rate: 26.6, status: 'Warning' }
+    },
+    variants: {
+      a: { subject: 'Summer is HERE: Free Blizzard Day! 🍦', sent: 340000, opens: 91800, clicks: 28900, ctr: 8.5 },
+      b: { subject: 'Beat the heat with a FREE Blizzard! 🤤', sent: 340000, opens: 82200, clicks: 25500, ctr: 7.5 }
+    }
   }
 ];
 
