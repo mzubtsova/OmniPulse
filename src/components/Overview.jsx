@@ -90,7 +90,7 @@ const ProgressRing = ({ percentage, label, color }) => {
 };
 
 export default function Overview({ campaign, apiKey, onSaveReport }) {
-  const [activeTab, setActiveTab] = useState('sql'); // 'sql' or 'ga'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'sql', or 'ga'
   const [ga4MeasurementId, setGa4MeasurementId] = useState('');
   const [ga4ApiSecret, setGa4ApiSecret] = useState('');
   const [showGa4Secret, setShowGa4Secret] = useState(false);
@@ -627,7 +627,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
-      {/* 📊 Tab Selector Bar: SQL CRM vs. Google Analytics */}
+      {/* 📊 Tab Selector Bar: Combined Overview vs. SQL CRM vs. Google Analytics */}
       <div style={{
         display: 'flex',
         gap: '0.5rem',
@@ -640,6 +640,20 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       }}>
         <button
           type="button"
+          onClick={() => setActiveTab('overview')}
+          className={`btn ${activeTab === 'overview' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{
+            fontSize: '0.85rem',
+            fontWeight: '600',
+            padding: '0.5rem 1.25rem',
+            borderRadius: '6px',
+            border: activeTab === 'overview' ? 'none' : '1px solid transparent'
+          }}
+        >
+          Combined Overview
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab('sql')}
           className={`btn ${activeTab === 'sql' ? 'btn-primary' : 'btn-secondary'}`}
           style={{
@@ -650,7 +664,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
             border: activeTab === 'sql' ? 'none' : '1px solid transparent'
           }}
         >
-          SQL Database & CRM Metrics
+          SQL Database Details
         </button>
         <button
           type="button"
@@ -664,11 +678,11 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
             border: activeTab === 'ga' ? 'none' : '1px solid transparent'
           }}
         >
-          Google Analytics (GA4 Post-Click)
+          Google Analytics Diagnostics
         </button>
       </div>
 
-      {activeTab === 'sql' && (
+      {activeTab === 'overview' && (
         <>
           {/* ========================================================================= */}
           {/* PANEL 1: EXECUTIVE PERFORMANCE LEDGER & BENCHMARKS MATRIX                 */}
@@ -835,6 +849,141 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
         </div>
       </div>
 
+      {/* Combined GA4 Summary Cards Block */}
+      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <h3 style={{ fontSize: '1.05rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <TrendingUp size={16} style={{ color: 'var(--accent-purple)' }} />
+          Google Analytics (GA4) Post-Click Traffic Overview
+        </h3>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+          <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>GA SESSIONS</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: '700', marginTop: '0.2rem' }}>{(ga.sessions || 0).toLocaleString()}</div>
+          </div>
+          <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>GA PURCHASES</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: '700', marginTop: '0.2rem' }}>{(ga.purchases || 0).toLocaleString()}</div>
+          </div>
+          <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>GA CVR</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: '700', marginTop: '0.2rem', color: 'var(--success)' }}>
+              {ga.sessions > 0 ? ((ga.purchases / ga.sessions) * 100).toFixed(2) : '0.00'}%
+            </div>
+          </div>
+          <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: `1px solid ${ga.bounceRate > 50 ? 'rgba(245,158,11,0.2)' : 'var(--border-color)'}` }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>BOUNCE RATE</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: '700', marginTop: '0.2rem', color: ga.bounceRate > 50 ? 'var(--warning)' : 'var(--text-primary)' }}>{ga.bounceRate}%</div>
+          </div>
+          <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: `1px solid ${ga.loadTime > 2.0 ? 'rgba(239,68,68,0.2)' : 'var(--border-color)'}` }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>PAGE LOAD TIME</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: '700', marginTop: '0.2rem', color: ga.loadTime > 2.0 ? 'var(--error)' : 'var(--text-primary)' }}>{ga.loadTime}s</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* PANEL 3: AI EXECUTIVE POST-MORTEM & FAILURES / RISKS LEDGER                */}
+      {/* ========================================================================= */}
+      <div className="grid-asymmetric-1">
+        
+        {/* AI Post-Mortem */}
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Sparkles size={14} style={{ color: 'var(--accent-primary)' }} />
+              AI Campaign Post-Mortem Analysis
+            </h3>
+            <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', borderRadius: '9999px', backgroundColor: 'rgba(124,58,237,0.1)', color: 'var(--accent-primary)', fontWeight: '600' }}>
+              Gemini Flash
+            </span>
+          </div>
+
+          {loadingReport ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, justifyContent: 'center', minHeight: '180px' }}>
+              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
+              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '90%', animation: 'pulse 1.5s infinite' }} />
+              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '95%', animation: 'pulse 1.5s infinite' }} />
+              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '85%', animation: 'pulse 1.5s infinite' }} />
+            </div>
+          ) : (
+            <div 
+              style={{ flex: 1, overflowY: 'auto', maxHeight: '380px', paddingRight: '0.4rem' }}
+              dangerouslySetInnerHTML={{ __html: parseMarkdown(postMortem) }}
+            />
+          )}
+        </div>
+
+        {/* Failures & Warnings List */}
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Bug size={14} style={{ color: 'var(--error)' }} />
+            Failures & Risk Audits Ledger
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '250px', paddingRight: '0.25rem' }}>
+            {failuresList.length > 0 ? (
+              failuresList.map((issue) => (
+                <div 
+                  key={issue.id} 
+                  style={{ 
+                    padding: '0.75rem 1rem', 
+                    backgroundColor: 'var(--bg-tertiary)', 
+                    borderRadius: 'var(--border-radius-md)', 
+                    border: `1px solid ${issue.severity === 'critical' ? 'rgba(239,68,68,0.15)' : issue.severity === 'warning' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'}` 
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {issue.severity === 'critical' ? (
+                        <AlertCircle size={14} style={{ color: 'var(--error)', flexShrink: 0 }} />
+                      ) : issue.severity === 'warning' ? (
+                        <AlertTriangle size={14} style={{ color: 'var(--warning)', flexShrink: 0 }} />
+                      ) : (
+                        <ShieldCheck size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
+                      )}
+                      <span style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: issue.severity === 'critical' ? 'var(--error)' : issue.severity === 'warning' ? 'var(--warning)' : 'var(--success)' }}>
+                        {issue.type}
+                      </span>
+                    </div>
+
+                    {issue.action && !issue.isInsight && (
+                      <button
+                        onClick={issue.action}
+                        className="btn btn-primary"
+                        disabled={loadingInsight !== null}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', borderRadius: '4px' }}
+                      >
+                        {loadingInsight === issue.id.replace('deliv-', '') ? <RefreshCw size={10} className="spin" /> : "Diagnose"}
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div style={{ fontSize: '0.8rem', marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
+                    {issue.message}
+                  </div>
+
+                  {issue.isInsight && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: 'rgba(124,58,237,0.02)', border: '1px solid rgba(124,58,237,0.15)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      <strong style={{ color: 'var(--accent-primary)' }}>Diagnosis: </strong>{issue.isInsight}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                No deliverability or logic branch anomalies identified.
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </>
+  )}
+
+  {activeTab === 'sql' && (
+    <>
       {/* ========================================================================= */}
       {/* PANEL 2: RETROSPECTIVE CONVERSION FUNNEL & FINANCIAL IMPACT LEDGER         */}
       {/* ========================================================================= */}
@@ -933,104 +1082,6 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
               </div>
             </div>
 
-          </div>
-        </div>
-
-      </div>
-
-      {/* ========================================================================= */}
-      {/* PANEL 3: AI EXECUTIVE POST-MORTEM & FAILURES / RISKS LEDGER                */}
-      {/* ========================================================================= */}
-      <div className="grid-asymmetric-1">
-        
-        {/* AI Post-Mortem */}
-        <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Sparkles size={14} style={{ color: 'var(--accent-primary)' }} />
-              AI Campaign Post-Mortem Analysis
-            </h3>
-            <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', borderRadius: '9999px', backgroundColor: 'rgba(124,58,237,0.1)', color: 'var(--accent-primary)', fontWeight: '600' }}>
-              Gemini Flash
-            </span>
-          </div>
-
-          {loadingReport ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, justifyContent: 'center', minHeight: '180px' }}>
-              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
-              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '90%', animation: 'pulse 1.5s infinite' }} />
-              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '95%', animation: 'pulse 1.5s infinite' }} />
-              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '85%', animation: 'pulse 1.5s infinite' }} />
-            </div>
-          ) : (
-            <div 
-              style={{ flex: 1, overflowY: 'auto', maxHeight: '380px', paddingRight: '0.4rem' }}
-              dangerouslySetInnerHTML={{ __html: parseMarkdown(postMortem) }}
-            />
-          )}
-        </div>
-
-        {/* Failures & Warnings List */}
-        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Bug size={14} style={{ color: 'var(--error)' }} />
-            Failures & Risk Audits Ledger
-          </h3>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '250px', paddingRight: '0.25rem' }}>
-            {failuresList.length > 0 ? (
-              failuresList.map((issue) => (
-                <div 
-                  key={issue.id} 
-                  style={{ 
-                    padding: '0.75rem 1rem', 
-                    backgroundColor: 'var(--bg-tertiary)', 
-                    borderRadius: 'var(--border-radius-md)', 
-                    border: `1px solid ${issue.severity === 'critical' ? 'rgba(239,68,68,0.15)' : issue.severity === 'warning' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'}` 
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {issue.severity === 'critical' ? (
-                        <AlertCircle size={14} style={{ color: 'var(--error)', flexShrink: 0 }} />
-                      ) : issue.severity === 'warning' ? (
-                        <AlertTriangle size={14} style={{ color: 'var(--warning)', flexShrink: 0 }} />
-                      ) : (
-                        <ShieldCheck size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
-                      )}
-                      <span style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: issue.severity === 'critical' ? 'var(--error)' : issue.severity === 'warning' ? 'var(--warning)' : 'var(--success)' }}>
-                        {issue.type}
-                      </span>
-                    </div>
-
-                    {issue.action && !issue.isInsight && (
-                      <button
-                        onClick={issue.action}
-                        className="btn btn-primary"
-                        disabled={loadingInsight !== null}
-                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', borderRadius: '4px' }}
-                      >
-                        {loadingInsight === issue.id.replace('deliv-', '') ? <RefreshCw size={10} className="spin" /> : "Diagnose"}
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div style={{ fontSize: '0.8rem', marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
-                    {issue.message}
-                  </div>
-
-                  {issue.isInsight && (
-                    <div style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: 'rgba(124,58,237,0.02)', border: '1px solid rgba(124,58,237,0.15)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      <strong style={{ color: 'var(--accent-primary)' }}>Diagnosis: </strong>{issue.isInsight}
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-                No deliverability or logic branch anomalies identified.
-              </div>
-            )}
           </div>
         </div>
 
