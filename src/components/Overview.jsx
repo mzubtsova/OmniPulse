@@ -756,7 +756,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem', flex: 1 }}>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="grid-compact-2col">
               <div style={{ padding: '0.85rem', backgroundColor: 'rgba(16, 185, 129, 0.04)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>GROSS CAMPAIGN REVENUE</div>
                 <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--success)', marginTop: '0.2rem' }}>
@@ -774,7 +774,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="grid-compact-2col">
               <div style={{ padding: '0.85rem', backgroundColor: 'rgba(239, 68, 68, 0.04)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>BOUNCE DELIV CHURN</div>
                 <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--error)', marginTop: '0.2rem' }}>
@@ -800,7 +800,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       {/* ========================================================================= */}
       {/* PANEL 3: AI EXECUTIVE POST-MORTEM & FAILURES / RISKS LEDGER                */}
       {/* ========================================================================= */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: '2rem' }}>
+      <div className="grid-asymmetric-1">
         
         {/* AI Post-Mortem */}
         <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -898,7 +898,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       {/* ========================================================================= */}
       {/* PANEL 4: DIAGNOSTIC DIAGRAMS & DELIVERABILITY RADAR                        */}
       {/* ========================================================================= */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
+      <div className="grid-asymmetric-2">
         
         {/* Clickmap or Channel Previews */}
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -981,7 +981,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       {/* ========================================================================= */}
       {/* PANEL 5: A/B TESTING & LIQUID LOGIC BRANCH ATTRIBUTION                     */}
       {/* ========================================================================= */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
+      <div className="grid-asymmetric-2">
         
         {/* A/B Significance curves */}
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1001,7 +1001,7 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
+          <div className="grid-compact-2col" style={{ marginTop: '0.25rem' }}>
             <div style={{ padding: '0.6rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Confidence Level</div>
               <div style={{ fontSize: '1.15rem', fontWeight: '700', color: stats.isSignificant ? 'var(--success)' : 'var(--warning)' }}>{stats.confidence}%</div>

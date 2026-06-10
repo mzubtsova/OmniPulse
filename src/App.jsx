@@ -157,19 +157,7 @@ export default function App() {
     <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100vw' }}>
       
       {/* Top Header Navigation */}
-      <header className="header" style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 500,
-        backgroundColor: 'var(--bg-secondary)',
-        borderBottom: '1px solid var(--border-color)',
-        padding: '1rem 2rem',
-        margin: 0,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backdropFilter: 'blur(10px)'
-      }}>
+      <header className="header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
           <div className="sidebar-logo-icon" style={{ width: '28px', height: '28px', borderRadius: '8px' }}>
             <Sparkles size={14} fill="white" />
@@ -183,7 +171,7 @@ export default function App() {
         </div>
 
         {/* Catalog Selector and theme toggles in Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div className="header-actions">
           {campaigns.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '500' }}>Active Campaign:</span>

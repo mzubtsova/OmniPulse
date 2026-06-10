@@ -194,7 +194,7 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns }) {
           Link your Braze REST API credentials and enter a Campaign ID to pull live post-deployment open, click, and conversion statistics.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="grid-compact-2col">
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label" style={{ fontSize: '0.8rem' }}>Braze REST Endpoint</label>
             <input
