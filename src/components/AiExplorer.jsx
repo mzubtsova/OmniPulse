@@ -61,7 +61,7 @@ export default function AiExplorer({ campaign, apiKey }) {
           </p>
         </div>
 
-        <form onSubmit={(e) => handleQuerySubmit(e)} style={{ display: 'flex', gap: '0.75rem' }}>
+        <form onSubmit={(e) => handleQuerySubmit(e)} className="nlp-form">
           <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
             <Search size={18} style={{ position: 'absolute', left: '12px', color: 'var(--text-muted)' }} />
             <input

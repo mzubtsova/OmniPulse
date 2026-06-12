@@ -173,7 +173,7 @@ export default function App() {
         {/* Catalog Selector and theme toggles in Header */}
         <div className="header-actions">
           {campaigns.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '500' }}>Active Campaign:</span>
               <select
                 value={activeCampaignId}
@@ -477,7 +477,7 @@ export default function App() {
               {/* Stats Block */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
                 gap: '0.85rem',
                 padding: '0.85rem 1rem',
                 backgroundColor: 'var(--bg-tertiary)',

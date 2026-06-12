@@ -245,7 +245,7 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns, onReset
           </div>
         </div>
 
-        <form onSubmit={handleConnectCampaign} style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+        <form onSubmit={handleConnectCampaign} className="connect-form">
           <div className="form-group" style={{ margin: 0, flex: 1 }}>
             <input
               type="text"
