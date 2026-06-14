@@ -89,8 +89,8 @@ const ProgressRing = ({ percentage, label, color }) => {
   );
 };
 
-export default function Overview({ campaign, apiKey, onSaveReport }) {
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'sql', or 'ga'
+export default function Overview({ campaign, apiKey, onSaveReport, activeTab, setActiveTab }) {
+  const [showFailuresTooltip, setShowFailuresTooltip] = useState(false);
   const [ga4MeasurementId, setGa4MeasurementId] = useState('');
   const [ga4ApiSecret, setGa4ApiSecret] = useState('');
   const [showGa4Secret, setShowGa4Secret] = useState(false);
@@ -738,41 +738,92 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
       {/* ========================================================================= */}
       {/* PANEL 3: AI EXECUTIVE POST-MORTEM & FAILURES / RISKS LEDGER                */}
       {/* ========================================================================= */}
-      <div className="grid-asymmetric-1">
-        
-        {/* AI Post-Mortem */}
-        <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Sparkles size={14} style={{ color: 'var(--accent-primary)' }} />
-              AI Campaign Post-Mortem Analysis
-            </h3>
-            <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', borderRadius: '9999px', backgroundColor: 'rgba(124,58,237,0.1)', color: 'var(--accent-primary)', fontWeight: '600' }}>
-              Gemini Flash
-            </span>
-          </div>
+      {(() => {
+        const parts = postMortem.split(/### 🎯 Recommended Adjustments/i);
+        const mainReport = parts[0];
+        const adjustments = parts[1];
 
-          {loadingReport ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, justifyContent: 'center', minHeight: '180px' }}>
-              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
-              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '90%', animation: 'pulse 1.5s infinite' }} />
-              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '95%', animation: 'pulse 1.5s infinite' }} />
-              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '85%', animation: 'pulse 1.5s infinite' }} />
-            </div>
-          ) : (
-            <div 
-              style={{ flex: 1, overflowY: 'auto', maxHeight: '380px', paddingRight: '0.4rem' }}
-              dangerouslySetInnerHTML={{ __html: parseMarkdown(postMortem) }}
-            />
-          )}
-        </div>
+        return (
+          <>
+            <div className="grid-asymmetric-1">
+              
+              {/* AI Post-Mortem */}
+              <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Sparkles size={14} style={{ color: 'var(--accent-primary)' }} />
+                    AI Campaign Post-Mortem Analysis
+                  </h3>
+                  <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', borderRadius: '9999px', backgroundColor: 'rgba(124,58,237,0.1)', color: 'var(--accent-primary)', fontWeight: '600' }}>
+                    Gemini Flash
+                  </span>
+                </div>
 
-        {/* Failures & Warnings List */}
-        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Bug size={14} style={{ color: 'var(--error)' }} />
-            Failures & Risk Audits Ledger
-          </h3>
+                {loadingReport ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, justifyContent: 'center', minHeight: '180px' }}>
+                    <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
+                    <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '90%', animation: 'pulse 1.5s infinite' }} />
+                    <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '95%', animation: 'pulse 1.5s infinite' }} />
+                    <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px', width: '85%', animation: 'pulse 1.5s infinite' }} />
+                  </div>
+                ) : (
+                  <div 
+                    style={{ flex: 1, paddingRight: '0.4rem' }}
+                    dangerouslySetInnerHTML={{ __html: parseMarkdown(mainReport) }}
+                  />
+                )}
+              </div>
+
+              {/* Failures & Warnings List */}
+              <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
+                <h3 
+                  style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'help' }}
+                  onMouseEnter={() => setShowFailuresTooltip(true)}
+                  onMouseLeave={() => setShowFailuresTooltip(false)}
+                >
+                  <Bug size={14} style={{ color: 'var(--error)' }} />
+                  Failures & Risk Audits Ledger
+                  <Info size={12} style={{ color: 'var(--text-muted)', marginLeft: '0.2rem' }} />
+                </h3>
+
+                {showFailuresTooltip && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '2.8rem',
+                    left: '1.75rem',
+                    right: '1.75rem',
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--error)',
+                    borderRadius: '8px',
+                    padding: '1rem',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                    zIndex: 10,
+                    fontSize: '0.78rem',
+                    lineHeight: '1.45',
+                    color: 'var(--text-secondary)',
+                    backdropFilter: 'blur(10px)',
+                    pointerEvents: 'none'
+                  }}>
+                    <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem' }}>
+                      🛡️ Audited Failure & Risk Dimensions
+                    </strong>
+                    <p style={{ marginBottom: '0.4rem' }}>
+                      OmniPulse continuously parses your database logs to verify campaign integrity across key risk vectors:
+                    </p>
+                    <p style={{ marginBottom: '0.4rem' }}>
+                      * <strong>Deliverability Placement</strong>: Detects ISP-specific placement drops below standard thresholds (e.g. Yahoo or Outlook filter triggers).
+                    </p>
+                    <p style={{ marginBottom: '0.4rem' }}>
+                      * <strong>Authentication Status</strong>: Verifies alignment of SPF, DKIM, and DMARC keys on outbound assets.
+                    </p>
+                    <p style={{ marginBottom: '0.4rem' }}>
+                      * <strong>Domain Blacklists</strong>: Checks sender IP reputation against real-time blackhole lists like SORBS.
+                    </p>
+                    <p>
+                      * <strong>Segment Conversions & Churn</strong>: Flags critical unsubscribe thresholds and hard bounce opt-outs.
+                    </p>
+                  </div>
+                )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '250px', paddingRight: '0.25rem' }}>
             {failuresList.length > 0 ? (
@@ -831,7 +882,23 @@ export default function Overview({ campaign, apiKey, onSaveReport }) {
           </div>
         </div>
 
-      </div>
+            </div>
+
+            {adjustments && (
+              <div className="panel fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--accent-primary)', boxShadow: 'var(--accent-glow)' }}>
+                <h3 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-primary)' }}>
+                  <Sparkles size={14} style={{ color: 'var(--accent-primary)' }} />
+                  AI Recommended Optimization Adjustments
+                </h3>
+                <div 
+                  style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}
+                  dangerouslySetInnerHTML={{ __html: parseMarkdown(adjustments.trim()) }}
+                />
+              </div>
+            )}
+          </>
+        );
+      })()}
     </>
   )}
 

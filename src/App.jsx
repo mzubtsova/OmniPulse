@@ -62,6 +62,7 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('omnipulse_theme') || 'dark');
   const [savedReports, setSavedReports] = useState([]);
   const [activeReportModal, setActiveReportModal] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Loading animation states for headers
   const [isChangingTheme, setIsChangingTheme] = useState(false);
@@ -307,106 +308,114 @@ export default function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
             {/* The One-Dash Report */}
-            <Overview campaign={activeCampaign} apiKey={apiKey} onSaveReport={handleSaveReport} />
+            <Overview campaign={activeCampaign} apiKey={apiKey} onSaveReport={handleSaveReport} activeTab={activeTab} setActiveTab={setActiveTab} />
             
-            {/* Separator Section Header for AI query tools */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '1rem', 
-              marginTop: '1.5rem',
-              borderTop: '1px solid var(--border-color)', 
-              paddingTop: '2.5rem' 
-            }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Terminal size={18} style={{ color: 'var(--accent-primary)' }} />
-                Natural Language Metrics Query Auditor
-              </h3>
-              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }}></div>
-            </div>
-
             {/* AI Explorer panel */}
-            <AiExplorer campaign={activeCampaign} apiKey={apiKey} />
+            {activeTab === 'sql' && (
+              <>
+                {/* Separator Section Header for AI query tools */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '1rem', 
+                  marginTop: '1.5rem',
+                  borderTop: '1px solid var(--border-color)', 
+                  paddingTop: '2.5rem' 
+                }}>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Terminal size={18} style={{ color: 'var(--accent-primary)' }} />
+                    Natural Language Metrics Query Auditor
+                  </h3>
+                  <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }}></div>
+                </div>
+
+                <AiExplorer campaign={activeCampaign} apiKey={apiKey} />
+              </>
+            )}
 
             {/* Saved Reports Snapshot Library Section */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '1rem', 
-              marginTop: '1.5rem',
-              borderTop: '1px solid var(--border-color)', 
-              paddingTop: '2.5rem' 
-            }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Calendar size={18} style={{ color: 'var(--accent-secondary)' }} />
-                Saved Reports History Archive
-              </h3>
-              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }}></div>
-            </div>
+            {activeTab === 'overview' && (
+              <>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '1rem', 
+                  marginTop: '1.5rem',
+                  borderTop: '1px solid var(--border-color)', 
+                  paddingTop: '2.5rem' 
+                }}>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Calendar size={18} style={{ color: 'var(--accent-secondary)' }} />
+                    Saved Reports History Archive
+                  </h3>
+                  <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }}></div>
+                </div>
 
-            <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Browse past saved post-deployment report snapshots. Click "View" to open archived AI summaries and conversion statistics.
-              </p>
-              
-              {savedReports.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem', marginTop: '0.5rem' }}>
-                  {savedReports.map((report) => (
-                    <div 
-                      key={report.id}
-                      style={{
-                        padding: '1.25rem',
-                        backgroundColor: 'var(--bg-tertiary)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: 'var(--border-radius-md)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.85rem'
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{report.campaignName}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.15rem' }}>
-                          <Calendar size={12} />
-                          {report.dateSaved}
+                <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Browse past saved post-deployment report snapshots. Click "View" to open archived AI summaries and conversion statistics.
+                  </p>
+                  
+                  {savedReports.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem', marginTop: '0.5rem' }}>
+                      {savedReports.map((report) => (
+                        <div 
+                          key={report.id}
+                          style={{
+                            padding: '1.25rem',
+                            backgroundColor: 'var(--bg-tertiary)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 'var(--border-radius-md)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.85rem'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{report.campaignName}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.15rem' }}>
+                              <Calendar size={12} />
+                              {report.dateSaved}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.65rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            <div>Sent: <strong style={{ color: 'var(--text-primary)' }}>{report.stats?.sent?.toLocaleString() || '0'}</strong></div>
+                            <div>Clicks: <strong style={{ color: 'var(--accent-primary)' }}>{report.stats?.clicks?.toLocaleString() || '0'}</strong></div>
+                            <div>Conversions: <strong style={{ color: 'var(--success)' }}>{report.stats?.conversions?.toLocaleString() || '0'}</strong></div>
+                            <div>Bounces: <strong style={{ color: report.stats?.bounces > 0 ? 'var(--error)' : 'var(--text-muted)' }}>{report.stats?.bounces?.toLocaleString() || '0'}</strong></div>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                            <button
+                              onClick={() => setActiveReportModal(report)}
+                              className="btn btn-primary"
+                              style={{ flex: 1, padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px' }}
+                            >
+                              <Eye size={12} />
+                              View Snapshot
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteReport(report.id, e)}
+                              className="btn btn-secondary"
+                              disabled={deletingId === report.id}
+                              style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px', color: 'var(--error)', borderColor: 'rgba(239, 68, 68, 0.2)', width: '38px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              title="Delete snapshot from storage"
+                            >
+                              {deletingId === report.id ? <RefreshCw size={12} className="spin" /> : <Trash2 size={12} />}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.65rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        <div>Sent: <strong style={{ color: 'var(--text-primary)' }}>{report.stats?.sent?.toLocaleString() || '0'}</strong></div>
-                        <div>Clicks: <strong style={{ color: 'var(--accent-primary)' }}>{report.stats?.clicks?.toLocaleString() || '0'}</strong></div>
-                        <div>Conversions: <strong style={{ color: 'var(--success)' }}>{report.stats?.conversions?.toLocaleString() || '0'}</strong></div>
-                        <div>Bounces: <strong style={{ color: report.stats?.bounces > 0 ? 'var(--error)' : 'var(--text-muted)' }}>{report.stats?.bounces?.toLocaleString() || '0'}</strong></div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                        <button
-                          onClick={() => setActiveReportModal(report)}
-                          className="btn btn-primary"
-                          style={{ flex: 1, padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px' }}
-                        >
-                          <Eye size={12} />
-                          View Snapshot
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteReport(report.id, e)}
-                          className="btn btn-secondary"
-                          disabled={deletingId === report.id}
-                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '4px', color: 'var(--error)', borderColor: 'rgba(239, 68, 68, 0.2)', width: '38px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title="Delete snapshot from storage"
-                        >
-                          {deletingId === report.id ? <RefreshCw size={12} className="spin" /> : <Trash2 size={12} />}
-                        </button>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-color)', borderRadius: 'var(--border-radius-md)', fontSize: '0.85rem' }}>
+                      No saved report snapshots found in the archive library. Click "Save Snapshot" at the top of the summary report to archive campaign metrics.
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-color)', borderRadius: 'var(--border-radius-md)', fontSize: '0.85rem' }}>
-                  No saved report snapshots found in the archive library. Click "Save Snapshot" at the top of the summary report to archive campaign metrics.
-                </div>
-              )}
-            </div>
+              </>
+            )}
 
           </div>
         ) : (
