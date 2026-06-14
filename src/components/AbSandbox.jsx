@@ -101,7 +101,7 @@ export default function AbSandbox({ campaign }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
           <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
             <h4 style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--accent-blue)', marginBottom: '0.75rem' }}>🔵 Variant A (Baseline)</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="grid-compact-2col">
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.78rem' }}>Volume Sent</label>
                 <input type="number" className="form-input" value={sentA} onChange={(e) => setSentA(Math.max(1, parseInt(e.target.value) || 0))} style={{ fontSize: '0.85rem' }} />
@@ -112,10 +112,10 @@ export default function AbSandbox({ campaign }) {
               </div>
             </div>
           </div>
-
+ 
           <div>
             <h4 style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--accent-purple)', marginBottom: '0.75rem' }}>🟣 Variant B (Challenger)</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="grid-compact-2col">
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.78rem' }}>Volume Sent</label>
                 <input type="number" className="form-input" value={sentB} onChange={(e) => setSentB(Math.max(1, parseInt(e.target.value) || 0))} style={{ fontSize: '0.85rem' }} />
@@ -128,7 +128,7 @@ export default function AbSandbox({ campaign }) {
           </div>
         </div>
       </div>
-
+ 
       {/* Right Panel: Distribution charts & Stats results */}
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         <h3 style={{ fontSize: '1.05rem', fontWeight: '700' }}>Confidence & Probability Curves</h3>
@@ -168,9 +168,9 @@ export default function AbSandbox({ campaign }) {
             </span>
           </div>
         </div>
-
+ 
         {/* Statistical calculations dashboard */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+        <div className="grid-compact-2col" style={{ marginTop: '0.5rem' }}>
           <div style={{ padding: '0.85rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Statistical Confidence</div>
             <div style={{ fontSize: '1.5rem', fontWeight: '800', marginTop: '0.2rem', color: stats.isSignificant ? 'var(--success)' : 'var(--warning)' }}>

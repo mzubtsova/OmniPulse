@@ -88,13 +88,11 @@ export default function LogicAuditor({ campaign }) {
         </table>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '1.25rem',
+      <div className="grid-compact-2col" style={{
         marginTop: '1rem',
         borderTop: '1px solid var(--border-color)',
-        paddingTop: '1.5rem'
+        paddingTop: '1.5rem',
+        gap: '1.25rem'
       }}>
         <div style={{ display: 'flex', gap: '0.75rem', padding: '1rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
           <Layers size={16} style={{ color: 'var(--accent-purple)', flexShrink: 0, marginTop: '2px' }} />

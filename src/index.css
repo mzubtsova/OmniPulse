@@ -620,3 +620,40 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Phone Mockup Styling for Visual Attribution previews */
+.phone-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+}
+
+.phone-mockup {
+  background-color: #000;
+  border: 10px solid #1f2937;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.phone-notch {
+  background-color: #1f2937;
+  border-radius: 0 0 12px 12px;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%);
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .phone-wrapper {
+    overflow-x: auto;
+    max-width: 100%;
+    padding: 0.5rem;
+    box-sizing: border-box;
+  }
+}
+
