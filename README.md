@@ -1,9 +1,9 @@
 # OmniPulse ⚡
 > **A post-deployment campaign analytics dashboard, multi-channel clickmap visualizer, and AI post-mortem assistant designed for lifecycle marketers and CRM developers.**
 
-![OmniPulse Preview](omnipulse_preview.png)
-
 OmniPulse bridges the gap between campaign code/creative and post-send analytics by visualising click hotspots directly on template previews, auditing dynamic Liquid logic paths, and using generative AI to write performance post-mortem reports.
+
+![OmniPulse Preview](omnipulse_preview.png)
 
 ---
 
