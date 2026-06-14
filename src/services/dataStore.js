@@ -589,6 +589,24 @@ export const loadSavedReports = () => {
 
 export const saveReportSnapshot = (campaignName, statsSnapshot, postMortemText) => {
   const list = loadSavedReports();
+
+  // Validate duplicate snapshots with identical campaign names and statistics
+  const isDuplicate = list.some(r => {
+    if (r.campaignName !== campaignName) return false;
+    const s1 = r.stats || {};
+    const s2 = statsSnapshot || {};
+    return s1.sent === s2.sent &&
+           s1.opens === s2.opens &&
+           s1.clicks === s2.clicks &&
+           s1.conversions === s2.conversions &&
+           s1.bounces === s2.bounces &&
+           s1.unsubscribes === s2.unsubscribes;
+  });
+
+  if (isDuplicate) {
+    throw new Error("This report snapshot with matching metrics is already saved.");
+  }
+
   const newReport = {
     id: `snapshot-${Date.now()}`,
     campaignName,

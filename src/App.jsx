@@ -136,9 +136,13 @@ export default function App() {
       triggerToast("AI post-mortem report is still loading, please wait.");
       return;
     }
-    const updated = saveReportSnapshot(campaignName, stats, postMortemText);
-    setSavedReports(updated);
-    triggerToast(`Snapshot of "${campaignName}" saved to archive!`);
+    try {
+      const updated = saveReportSnapshot(campaignName, stats, postMortemText);
+      setSavedReports(updated);
+      triggerToast(`Snapshot of "${campaignName}" saved to archive!`);
+    } catch (err) {
+      triggerToast(err.message || "Failed to save report.");
+    }
   };
 
   // Delete Report snapshot handler with forced 1-second delay
