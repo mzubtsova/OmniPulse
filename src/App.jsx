@@ -20,7 +20,8 @@ import {
   saveCampaigns, 
   loadSavedReports, 
   saveReportSnapshot, 
-  deleteSavedReport 
+  deleteSavedReport,
+  fetchBrazeCampaignStats
 } from './services/dataStore';
 import Overview from './components/Overview';
 import Settings from './components/Settings';
@@ -150,6 +151,58 @@ export default function App() {
       setDeletingId(null);
       triggerToast("Snapshot deleted from history archive.");
     }, 1000);
+  };
+
+  // Link and Sync Braze campaign ID directly to local workspace campaign
+  const handleSyncBrazeCampaign = async (campaignId, brazeId) => {
+    if (!brazeId) {
+      // Unlink case
+      setCampaigns(prev => {
+        const updatedList = prev.map(c => {
+          if (c.id === campaignId) {
+            const { brazeCampaignId, ...rest } = c;
+            return {
+              ...rest,
+              lastSynced: 'Not Linked'
+            };
+          }
+          return c;
+        });
+        saveCampaigns(updatedList);
+        return updatedList;
+      });
+      triggerToast("Unlinked Braze campaign.");
+      return;
+    }
+
+    const brazeEndpoint = localStorage.getItem('braze_endpoint') || 'https://rest.iad-01.braze.com';
+    const brazeApiKey = localStorage.getItem('braze_api_key') || '';
+
+    try {
+      const updatedRecord = await fetchBrazeCampaignStats(brazeId, brazeEndpoint, brazeApiKey);
+      
+      setCampaigns(prev => {
+        const updatedList = prev.map(c => {
+          if (c.id === campaignId) {
+            return {
+              ...c,
+              ...updatedRecord,
+              id: campaignId, // Retain local workspace ID
+              brazeCampaignId: brazeId, // Save the linked ID
+              lastSynced: 'Just Now'
+            };
+          }
+          return c;
+        });
+        saveCampaigns(updatedList);
+        return updatedList;
+      });
+      
+      triggerToast(`Synced live metrics from Braze campaign: ${brazeId}`);
+    } catch (err) {
+      triggerToast(`Error syncing campaign: ${err.message}`);
+      throw err;
+    }
   };
 
   const activeCampaign = campaigns.find(c => c.id === activeCampaignId) || campaigns[0];
@@ -308,7 +361,14 @@ export default function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
             {/* The One-Dash Report */}
-            <Overview campaign={activeCampaign} apiKey={apiKey} onSaveReport={handleSaveReport} activeTab={activeTab} setActiveTab={setActiveTab} />
+            <Overview 
+              campaign={activeCampaign} 
+              apiKey={apiKey} 
+              onSaveReport={handleSaveReport} 
+              activeTab={activeTab} 
+              setActiveTab={setActiveTab} 
+              onSyncCampaign={handleSyncBrazeCampaign}
+            />
             
             {/* AI Explorer panel */}
             {activeTab === 'sql' && (

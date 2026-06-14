@@ -20,7 +20,9 @@ import {
   ShieldAlert,
   BarChart3,
   Eye,
-  EyeOff
+  EyeOff,
+  Link,
+  Unlink
 } from 'lucide-react';
 import { generateCampaignPostMortem, generateAnomalyExplanation } from '../services/gemini';
 import { calculateABStats } from '../utils/statsMath';
@@ -89,11 +91,41 @@ const ProgressRing = ({ percentage, label, color }) => {
   );
 };
 
-export default function Overview({ campaign, apiKey, onSaveReport, activeTab, setActiveTab }) {
+export default function Overview({ campaign, apiKey, onSaveReport, activeTab, setActiveTab, onSyncCampaign }) {
   const [showFailuresTooltip, setShowFailuresTooltip] = useState(false);
   const [ga4MeasurementId, setGa4MeasurementId] = useState('');
   const [ga4ApiSecret, setGa4ApiSecret] = useState('');
   const [showGa4Secret, setShowGa4Secret] = useState(false);
+
+  // Braze Link & Sync UI States
+  const [isLinking, setIsLinking] = useState(false);
+  const [brazeIdInput, setBrazeIdInput] = useState(campaign.brazeCampaignId || '');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState('');
+
+  useEffect(() => {
+    setBrazeIdInput(campaign.brazeCampaignId || '');
+    setSyncError('');
+    setIsLinking(false);
+  }, [campaign.id, campaign.brazeCampaignId]);
+
+  const handleSyncBraze = async (brazeId) => {
+    if (!brazeId || !brazeId.trim()) return;
+    setIsSyncing(true);
+    setSyncError('');
+    try {
+      await onSyncCampaign(campaign.id, brazeId.trim());
+      setIsLinking(false);
+    } catch (err) {
+      setSyncError(err.message || "Failed to fetch metrics from Braze. Verify API key in Settings.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleUnlinkBraze = () => {
+    onSyncCampaign(campaign.id, '');
+  };
 
   useEffect(() => {
     setGa4MeasurementId(localStorage.getItem('ga4_measurement_id') || '');
@@ -693,14 +725,101 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
       {activeTab === 'overview' && (
         <>
           {/* Executive Campaign Title Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem', marginBottom: '0.5rem' }}>
             <div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: '700' }}>Campaign Executive Summary</h2>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
                 Status: <strong style={{ color: 'var(--success)' }}>Report Finalized</strong> &bull; Synced {campaign.lastSynced}
               </p>
             </div>
+
+            {/* Braze Link & Sync Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              {campaign.brazeCampaignId ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--bg-tertiary)', padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Braze Link:</span>
+                  <code style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                    {campaign.brazeCampaignId.substring(0, 10)}...
+                  </code>
+                  <button
+                    onClick={() => handleSyncBraze(campaign.brazeCampaignId)}
+                    disabled={isSyncing}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.25rem', height: '24px', width: '24px', minWidth: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}
+                    title="Pull latest numbers from Braze API"
+                  >
+                    <RefreshCw size={12} className={isSyncing ? 'spin' : ''} />
+                  </button>
+                  <button
+                    onClick={handleUnlinkBraze}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.25rem', height: '24px', width: '24px', minWidth: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', color: 'var(--error)' }}
+                    title="Unlink Braze campaign"
+                  >
+                    <Unlink size={12} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {isLinking ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        placeholder="Braze Campaign ID"
+                        className="form-input"
+                        value={brazeIdInput}
+                        onChange={(e) => setBrazeIdInput(e.target.value)}
+                        style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', width: '160px', borderRadius: '4px', height: '30px' }}
+                      />
+                      <button
+                        onClick={() => handleSyncBraze(brazeIdInput)}
+                        disabled={isSyncing || !brazeIdInput.trim()}
+                        className="btn btn-primary"
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '4px', height: '30px', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                      >
+                        {isSyncing ? <RefreshCw size={12} className="spin" /> : <Link size={12} />}
+                        Link & Sync
+                      </button>
+                      <button
+                        onClick={() => setIsLinking(false)}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '4px', height: '30px' }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setIsLinking(true)}
+                      className="btn btn-secondary"
+                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', borderRadius: '6px' }}
+                    >
+                      <Link size={12} />
+                      Link Braze Campaign
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
+
+          {syncError && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.65rem 0.85rem',
+              backgroundColor: 'rgba(244,63,94,0.08)',
+              border: '1px solid rgba(244,63,94,0.15)',
+              borderRadius: '6px',
+              color: 'var(--error)',
+              fontSize: '0.78rem',
+              marginBottom: '1rem'
+            }}>
+              <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+              <span>{syncError}</span>
+            </div>
+          )}
 
       {/* Combined GA4 Summary Cards Block */}
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
