@@ -22,7 +22,10 @@ import {
   Eye,
   EyeOff,
   Link,
-  Unlink
+  Unlink,
+  Save,
+  Printer,
+  Download
 } from 'lucide-react';
 import { generateCampaignPostMortem, generateAnomalyExplanation } from '../services/gemini';
 import { calculateABStats } from '../utils/statsMath';
