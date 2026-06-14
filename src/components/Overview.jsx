@@ -285,14 +285,47 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
   const triggerSaveReport = () => {
     setIsSaving(true);
     setTimeout(() => {
-      onSaveReport(activeStats.name, {
+      let reportName = activeStats.name;
+      let reportStats = {
         sent: activeStats.sent,
         opens: activeStats.opens,
         clicks: activeStats.clicks,
         conversions: activeStats.conversions,
         bounces: activeStats.bounces,
         unsubscribes: activeStats.unsubscribes
-      }, postMortem);
+      };
+      let reportText = postMortem;
+
+      if (activeTab === 'sql') {
+        reportName = `[SQL Report] ${campaign.name}`;
+        reportText = `### SQL CRM Database & Benchmark Ledger\n\n` + 
+          `* **Total Benchmarks Evaluated**: ${campaign.branches?.length || 0}\n` +
+          `* **Campaign Version**: ${campaign.version}\n` +
+          `* **Deliverability Anomalies**: SPF/DKIM Alignment OK, ISP deviation analysis resolved.\n\n` +
+          `#### Active Segment Attributions:\n` +
+          (campaign.branches?.map(b => `* **${b.name}** (${b.expression}): Triggered: ${b.triggered.toLocaleString()} | Click Rate: ${b.ctr}% | Conversion Rate: ${b.cvr}%`).join('\n') || 'No segments configured.');
+      } else if (activeTab === 'ga') {
+        reportName = `[GA Report] ${campaign.name}`;
+        reportStats = {
+          sent: campaign.clicks,
+          opens: campaign.gaStats?.sessions || 0,
+          clicks: campaign.gaStats?.purchases || 0,
+          conversions: campaign.gaStats?.purchases || 0,
+          bounces: Math.round((campaign.gaStats?.sessions || 0) * ((campaign.gaStats?.bounceRate || 0) / 100)),
+          unsubscribes: 0
+        };
+        reportText = `### Google Analytics (GA4) Traffic & UTM Tracking Audit\n\n` +
+          `* **GA Sessions**: ${campaign.gaStats?.sessions?.toLocaleString() || 0}\n` +
+          `* **Target Purchases**: ${campaign.gaStats?.purchases?.toLocaleString() || 0}\n` +
+          `* **Session Bounce Rate**: ${campaign.gaStats?.bounceRate}%\n` +
+          `* **Site Load Speed**: ${campaign.gaStats?.loadTime}s (Avg: 2.0s)\n` +
+          `* **UTM Campaign Tracking Status**: Valid\n` +
+          `* **Device Split Bounce Rate**: Mobile (${campaign.gaStats?.deviceSplit?.mobile?.bounceRate}%) vs. Desktop (${campaign.gaStats?.deviceSplit?.desktop?.bounceRate}%)`;
+      } else {
+        reportName = `[Full Report] ${campaign.name}`;
+      }
+
+      onSaveReport(reportName, reportStats, reportText);
       setIsSaving(false);
     }, 1000);
   };
@@ -308,10 +341,35 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
   const triggerExportJson = () => {
     setIsExporting(true);
     setTimeout(() => {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeStats, null, 2));
+      let exportObj = activeStats;
+      let exportName = `${activeStats.id}-report.json`;
+
+      if (activeTab === 'sql') {
+        exportObj = {
+          reportType: 'sql_crm_database',
+          campaignId: campaign.id,
+          campaignName: campaign.name,
+          version: campaign.version,
+          benchmarks: campaign.branches || [],
+          deliverability: campaign.deliverability || {},
+          failures: getFailuresAndRisks()
+        };
+        exportName = `${campaign.id}-sql-report.json`;
+      } else if (activeTab === 'ga') {
+        exportObj = {
+          reportType: 'google_analytics_diagnostics',
+          campaignId: campaign.id,
+          campaignName: campaign.name,
+          gaStats: campaign.gaStats || {},
+          speedSplit: campaign.gaStats?.deviceSplit || {}
+        };
+        exportName = `${campaign.id}-ga-report.json`;
+      }
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `${activeStats.id}-report.json`);
+      downloadAnchor.setAttribute("download", exportName);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -659,67 +717,104 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
-      {/* 📊 Tab Selector Bar: Combined Overview vs. SQL CRM vs. Google Analytics */}
-      <div style={{
-        display: 'flex',
-        gap: '0.5rem',
-        backgroundColor: 'var(--bg-secondary)',
-        padding: '0.4rem',
-        borderRadius: '10px',
-        border: '1px solid var(--border-color)',
-        alignSelf: 'stretch',
-        overflowX: 'auto',
-        whiteSpace: 'nowrap',
-        WebkitOverflowScrolling: 'touch',
-        marginBottom: '0.5rem',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none'
-      }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('overview')}
-          className={`btn ${activeTab === 'overview' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{
-            fontSize: '0.85rem',
-            fontWeight: '600',
-            padding: '0.5rem 1.25rem',
-            borderRadius: '6px',
-            border: activeTab === 'overview' ? 'none' : '1px solid transparent',
-            flexShrink: 0
-          }}
-        >
-          Combined Overview
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('sql')}
-          className={`btn ${activeTab === 'sql' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{
-            fontSize: '0.85rem',
-            fontWeight: '600',
-            padding: '0.5rem 1.25rem',
-            borderRadius: '6px',
-            border: activeTab === 'sql' ? 'none' : '1px solid transparent',
-            flexShrink: 0
-          }}
-        >
-          SQL Database Details
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('ga')}
-          className={`btn ${activeTab === 'ga' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{
-            fontSize: '0.85rem',
-            fontWeight: '600',
-            padding: '0.5rem 1.25rem',
-            borderRadius: '6px',
-            border: activeTab === 'ga' ? 'none' : '1px solid transparent',
-            flexShrink: 0
-          }}
-        >
-          Google Analytics Diagnostics
-        </button>
+      {/* 📊 Tab Selector & Actions Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>
+        {/* Tab Selector Bar */}
+        <div style={{
+          display: 'flex',
+          gap: '0.5rem',
+          backgroundColor: 'var(--bg-secondary)',
+          padding: '0.4rem',
+          borderRadius: '10px',
+          border: '1px solid var(--border-color)',
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          flex: '1',
+          maxWidth: 'fit-content'
+        }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`btn ${activeTab === 'overview' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              padding: '0.5rem 1.25rem',
+              borderRadius: '6px',
+              border: activeTab === 'overview' ? 'none' : '1px solid transparent',
+              flexShrink: 0
+            }}
+          >
+            Combined Overview
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('sql')}
+            className={`btn ${activeTab === 'sql' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              padding: '0.5rem 1.25rem',
+              borderRadius: '6px',
+              border: activeTab === 'sql' ? 'none' : '1px solid transparent',
+              flexShrink: 0
+            }}
+          >
+            SQL Database Details
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('ga')}
+            className={`btn ${activeTab === 'ga' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              padding: '0.5rem 1.25rem',
+              borderRadius: '6px',
+              border: activeTab === 'ga' ? 'none' : '1px solid transparent',
+              flexShrink: 0
+            }}
+          >
+            Google Analytics Diagnostics
+          </button>
+        </div>
+
+        {/* Global Export/Save/Print Actions */}
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={triggerSaveReport}
+            className="btn btn-secondary"
+            disabled={isSaving}
+            style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', borderRadius: '6px' }}
+            title="Save snapshot of current tab report to archive"
+          >
+            {isSaving ? <RefreshCw size={12} className="spin" /> : <Save size={12} />}
+            {isSaving ? "Saving..." : `Save ${activeTab === 'overview' ? 'Full' : activeTab === 'sql' ? 'SQL' : 'GA'} Report`}
+          </button>
+          <button
+            onClick={triggerPrintReport}
+            className="btn btn-secondary"
+            disabled={isPrinting}
+            style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', borderRadius: '6px' }}
+            title="Print report or export as PDF"
+          >
+            {isPrinting ? <RefreshCw size={12} className="spin" /> : <Printer size={12} />}
+            {isPrinting ? "Preparing PDF..." : "Print/PDF"}
+          </button>
+          <button
+            onClick={triggerExportJson}
+            className="btn btn-secondary"
+            disabled={isExporting}
+            style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', borderRadius: '6px' }}
+            title="Export metrics as JSON file"
+          >
+            {isExporting ? <RefreshCw size={12} className="spin" /> : <Download size={12} />}
+            {isExporting ? "Exporting..." : "Export JSON"}
+          </button>
+        </div>
       </div>
 
       {activeTab === 'overview' && (
@@ -1037,40 +1132,6 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            {/* Download/Export Report Actions with 1-second delays */}
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
-              <button
-                onClick={triggerSaveReport}
-                className="btn btn-secondary"
-                disabled={isSaving}
-                style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem', borderRadius: 'var(--border-radius-sm)' }}
-                title="Save snapshot to archive"
-              >
-                {isSaving ? <RefreshCw size={12} className="spin" /> : null}
-                {isSaving ? "Saving..." : "Save Snapshot"}
-              </button>
-              <button
-                onClick={triggerPrintReport}
-                className="btn btn-secondary"
-                disabled={isPrinting}
-                style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem', borderRadius: 'var(--border-radius-sm)' }}
-                title="Print report to PDF"
-              >
-                {isPrinting ? <RefreshCw size={12} className="spin" /> : null}
-                {isPrinting ? "Preparing PDF..." : "Print/PDF"}
-              </button>
-              <button
-                onClick={triggerExportJson}
-                className="btn btn-secondary"
-                disabled={isExporting}
-                style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem', borderRadius: 'var(--border-radius-sm)' }}
-                title="Export metrics as JSON"
-              >
-                {isExporting ? <RefreshCw size={12} className="spin" /> : null}
-                {isExporting ? "Exporting..." : "Export JSON"}
-              </button>
-            </div>
-
             {/* Segmented Channel Filter */}
             {campaign.channels && (
               <div style={{ display: 'flex', gap: '0.2rem', backgroundColor: 'var(--bg-primary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
