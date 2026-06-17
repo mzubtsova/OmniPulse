@@ -39,8 +39,9 @@ flowchart TD
 
     subgraph ExternalServices ["🤖 EXTERNAL SERVICES & APIS"]
         Gemini["💬 Gemini campaign Summary generator"]
+        Braze["🔥 Braze REST Campaign API"]
     end
-    class ExternalServices,Gemini api;
+    class ExternalServices,Gemini,Braze api;
 
     ExecutiveReport["📄 AI Performance Post-Mortems"]:::output
     AnomalyReport["🛡️ ISP Anomaly Diagnoses"]:::output
@@ -59,11 +60,13 @@ flowchart TD
     App <-->|Metrics Context| Gemini
     Gemini -->|Generate Summary| ExecutiveReport
     Radar -->|Explain Anomaly| AnomalyReport
+    
+    App <-->|Sync Live Metrics| Braze
 ```
 
 ### Component Breakdown & Data Flow
-1. **Inputs**: The application loads pre-seeded historical campaigns or parses imported campaign event logs (CSVs/JSONs) locally.
-2. **OmniPulse Core Controller (`App.jsx`)**: Distributes campaign details across the visual, branch-logic, and statistical calculator subpanels.
+1. **Inputs**: The application loads pre-seeded historical campaigns, parses imported campaign event logs (CSVs/JSONs) locally, or syncs campaign statistics directly from the **Braze REST API**.
+2. **OmniPulse Core Controller (`App.jsx`)**: Distributes campaign details across the visual, branch-logic, and statistical calculator subpanels, while coordinating global report actions.
 3. **Attribution & Logic Engines**: Connects clicks to specific absolute coordinates for visual hotspot rendering and logic blocks.
 4. **Bayesian Calculator**: Runs standard proportion Z-tests and plots coordinates for SVG probability curve overlays.
 5. **AI Post-Mortem Integration**: Queries the **Google Gemini API** with structured metric contexts to output qualitative summaries and deliverability anomaly debug audits.
@@ -74,8 +77,11 @@ flowchart TD
 
 ### 1. Unified Master Overview & AI Post-Mortems
 * **Dynamic Engagement Pulses**: Circular progress indicators calculating open rates, click-through rates, conversion rates, and unsubscribe rates.
-* **AI Post-Mortem Summary Panel**: Integrates with Google Gemini to outline key findings, call out performance red flags, and recommend adjustments.
+* **AI Post-Mortem Summary Panel**: Integrates with Google Gemini to outline key findings, call out performance red flags, and highlight "Recommended Adjustments" in a standalone card with an amethyst border.
+* **Campaign-level Live Braze Sync**: Allows marketers to input a custom Braze Campaign ID to link and retrieve real-time post-deployment statistics directly from Braze.
 * **Filter Bars**: Filter statistics by Date Range, Channels (Email, Push, SMS, IAM), and Segment Cohorts.
+* **Tab-Specific Global Actions**: Consolidates Save Snapshot, Print, and JSON export buttons in the header, exporting full reports for Combined Overview, database benchmarks for SQL CRM Details, or bounce/device splits for GA4 Diagnostics.
+* **Duplicate Snapshot Protection**: Validates report snapshots in local storage against existing history items and blocks saving duplicates, prompting clean error toast messages.
 
 ### 2. Visual clickmap Attributions
 * **Dynamic Hotspot Overlays**: Layers electric-cyan pulsing button dots directly on template previews.
@@ -91,8 +97,9 @@ flowchart TD
 * **Statistical Significance**: Calculates Z-scores, p-values, lift percentages, and 95% confidence intervals.
 * **Probability Overlap Curves**: Renders mathematically accurate overlapping density distribution curves using SVGs.
 
-### 5. Deliverability Anomalies Radar
+### 5. Deliverability Anomalies Radar & Ledger Hover Info
 * **ISP Open-rate Deviations**: Flags email clients (Gmail, Outlook, Yahoo) whose open rates drop significantly below the campaign average.
+* **Failures & Risk Audits Ledger**: Features a custom detailed tooltip explaining what deliverability checks are performed (SPF/DKIM/DMARC alignments, blacklist checks, and volume bounce rate spikes).
 * **AI Anomaly Explainer**: One-click prompt requesting Gemini to diagnose potential ISP filtering reasons.
 
 ---
