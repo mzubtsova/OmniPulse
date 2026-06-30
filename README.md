@@ -5,8 +5,6 @@ OmniPulse bridges the gap between campaign code/creative and post-send analytics
 
 **Current product status:** OmniPulse is now structured as a daily-use campaign analysis workspace with clear data provenance. Seed campaigns are marked as demo data, CSV imports are marked as imported data, live Braze sync is routed through a serverless API when configured, and inferred diagnostics are labeled rather than presented as verified external checks.
 
-![OmniPulse Preview](omnipulse_preview.png)
-
 ---
 
 ## 🛠️ System Architecture & Data Flow
@@ -21,8 +19,8 @@ flowchart TD
     classDef output fill:#061712,stroke:#34d399,stroke-width:2px,color:#f8fafc;
 
     %% Nodes
-    Logs["📂 CSV Campaign Metrics"]:::source
-    Catalog["🗂️ Campaign Catalog Workspace"]:::source
+    Logs["📂 Imported CSV Campaign Metrics"]:::source
+    Catalog["🗂️ Demo Campaign Seeds"]:::source
     
     App["📊 OmniPulse Dashboard Core (App.jsx)"]:::core
     
@@ -34,27 +32,30 @@ flowchart TD
     class AnalyticsEngines,Clickmap,LiquidBranch,Radar engine;
     
     subgraph StatsCalculators ["🧮 STATISTICAL CALCULATORS"]
-        Significance["📐 A/B Significance Calc"]
+        Significance["📐 Two-Proportion Z-Test"]
         CurveGenerator["📈 SVG Probability Curve Generator"]
     end
     class StatsCalculators,Significance,CurveGenerator engine;
 
     subgraph ExternalServices ["🤖 EXTERNAL SERVICES & APIS"]
-        Gemini["💬 Gemini campaign Summary generator"]
-        Braze["🔥 Braze REST Campaign API"]
+        Gemini["💬 /api/gemini Serverless Proxy"]
+        Braze["🔥 /api/brazeCampaign Serverless Sync"]
     end
     class ExternalServices,Gemini,Braze api;
 
     ExecutiveReport["📄 AI Performance Post-Mortems"]:::output
     AnomalyReport["🛡️ ISP Anomaly Diagnoses"]:::output
+    Archive["🗃️ Local Report Archive Upserts"]:::output
+    Provenance["🏷️ Source Badges"]:::output
     
     %% Flows
     Logs -->|Drag & Drop Uploader| App
-    Catalog -->|Load Seeding Campaign| App
+    Catalog -->|Load Seed Campaign| App
     
     App -->|ATTRIBUTION| Clickmap
     App -->|BRANCH LOGIC| LiquidBranch
     App -->|ANOMALY DETECTION| Radar
+    App -->|SOURCE LABELS| Provenance
     
     App -->|Z-TEST| Significance
     Significance -->|Render Curve| CurveGenerator
@@ -62,6 +63,7 @@ flowchart TD
     App <-->|Metrics Context| Gemini
     Gemini -->|Generate Summary| ExecutiveReport
     Radar -->|Explain Anomaly| AnomalyReport
+    App -->|Save / Update Snapshot| Archive
     
     App <-->|Sync Live Metrics| Braze
 ```
