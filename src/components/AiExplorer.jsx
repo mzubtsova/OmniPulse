@@ -20,7 +20,7 @@ export default function AiExplorer({ campaign, apiKey }) {
     try {
       const outcome = await queryCampaignDataWithAi(activeQuery.trim(), campaign, apiKey);
       setResults(outcome);
-    } catch (err) {
+    } catch {
       setResults({
         sql: "-- SQL Generation Error",
         resultHeaders: ["Status"],
@@ -123,9 +123,9 @@ export default function AiExplorer({ campaign, apiKey }) {
           {/* Left Side: Generated SQL query */}
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Terminal size={14} style={{ color: 'var(--accent-secondary)' }} />
-                AI Translated SQL Query
+            <h4 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Terminal size={14} style={{ color: 'var(--accent-secondary)' }} />
+                AI Drafted SQL Query
               </h4>
               <button
                 onClick={copyToClipboard}
@@ -153,7 +153,7 @@ export default function AiExplorer({ campaign, apiKey }) {
             <div style={{ display: 'flex', gap: '0.6rem', padding: '0.85rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', marginTop: 'auto' }}>
               <Database size={14} style={{ color: 'var(--accent-primary)', flexShrink: 0, marginTop: '2px' }} />
               <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                Query targeted against live event logs tracking schema (Snowflake/Currents events ledger).
+                Query is drafted against the documented campaign-events schema and computed from the currently loaded campaign object until a warehouse connector is configured.
               </p>
             </div>
           </div>

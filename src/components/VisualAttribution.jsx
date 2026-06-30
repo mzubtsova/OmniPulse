@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Mail, Smartphone, MessageSquare, Monitor, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
+import { sanitizeTemplateHtml } from '../utils/safeHtml';
 
 export default function VisualAttribution({ campaign }) {
-  const [device, setDevice] = useState('iphone');
   const [hoveredHotspot, setHoveredHotspot] = useState(null);
 
   const renderSimulatedFrame = () => {
@@ -13,7 +13,8 @@ export default function VisualAttribution({ campaign }) {
             <div className="hotspot-container" style={{ position: 'relative', height: '520px', width: '100%' }}>
               <iframe
                 title="Email Campaign Visual Preview"
-                srcDoc={campaign.templateHtml}
+                sandbox=""
+                srcDoc={sanitizeTemplateHtml(campaign.templateHtml)}
                 style={{ width: '100%', height: '100%', border: 'none' }}
               />
               {/* Hotspots Overlay */}
@@ -73,7 +74,7 @@ export default function VisualAttribution({ campaign }) {
                   position: 'relative'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dairy Queen</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nimbus Retail</span>
                     <span style={{ fontSize: '0.65rem', opacity: 0.7 }}>now</span>
                   </div>
                   <div style={{ fontWeight: '600', fontSize: '0.85rem' }}>{campaign.subjectLine}</div>
@@ -122,7 +123,7 @@ export default function VisualAttribution({ campaign }) {
                 flexDirection: 'column'
               }}>
                 <div style={{ padding: '0.6rem', borderBottom: '1px solid #1f2937', textAlign: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: '600' }}>
-                  Dairy Queen Support
+                  Nimbus Retail Support
                 </div>
                 <div style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', justifyContent: 'flex-start' }}>
                   <div style={{

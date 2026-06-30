@@ -5,6 +5,29 @@ const SYSTEM_INSTRUCTION = "You are a senior MarTech growth analyst. Your goal i
 // Live Gemini API request
 async function callGeminiApi(prompt, apiKey) {
   try {
+    const proxyResponse = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        systemInstruction: SYSTEM_INSTRUCTION,
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 1000
+        }
+      })
+    });
+
+    if (proxyResponse.ok && proxyResponse.headers.get('content-type')?.includes('application/json')) {
+      const data = await proxyResponse.json();
+      return data.text || 'No response generated.';
+    }
+
+    if (!apiKey) {
+      const err = await proxyResponse.json().catch(() => ({}));
+      throw new Error(err.error || 'Server AI proxy is not configured.');
+    }
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
@@ -208,9 +231,9 @@ function getMockQueryResults(userQuery, campaign) {
 
 // Seeds for mock fallback mode
 function getMockSummary(id, channel) {
-  const lookupKey = id === 'dq-summer-multichannel' ? `${id}-${channel}` : id;
+  const lookupKey = id === 'nr-summer-multichannel' ? `${id}-${channel}` : id;
   const summaries = {
-    'dq-summer-multichannel-multi': `### 🏆 Key Findings
+    'nr-summer-multichannel-multi': `### 🏆 Key Findings
 * **Email Leads Conversions**: Multi-channel kickoff analysis shows **Email** delivered **16,000 conversions** ($720,000 revenue), accounting for 71.4% of total sales.
 * **Push High CTR**: Mobile App push notifications yielded the highest engagement rate with a **15.0% direct click rate**.
 
@@ -222,9 +245,9 @@ function getMockSummary(id, channel) {
 * **Cap SMS Sends**: Throttle SMS messages to high-intent cohorts only.
 * **Email Template Sync**: Migrate successful email template styles to the main lifecycle flow.`,
 
-    'dq-summer-multichannel-email': `### 🏆 Key Findings
-* **Variant A Won**: Subject line **"Summer is HERE: Free Blizzard Day! 🍦"** outperformed Variant B by an 11% CTR lift.
-* **Hero Button Leads**: The clickmap shows the **Claim Blizzard CTA** button generated 76% of total link clicks.
+    'nr-summer-multichannel-email': `### 🏆 Key Findings
+* **Variant A Won**: Subject line **"Summer is here: member reward day"** outperformed Variant B by an 11% CTR lift.
+* **Hero Button Leads**: The clickmap shows the **Claim Reward CTA** button generated 76% of total link clicks.
 
 ### ⚠️ Performance Red Flags
 * **Fallback Rate Drops**: Users who fell into the **Standard Fallback segment** converted at only **0.92%**, indicating that unpersonalized templates have low yield.
@@ -234,7 +257,7 @@ function getMockSummary(id, channel) {
 * **Insert Dynamic Liquid**: Replace default copy fallbacks with personalized location tokens.
 * **Warm Sender IPs**: Warm up your sub-domain senders before high-volume holiday blasts.`,
 
-    'dq-summer-multichannel-push': `### 🏆 Key Findings
+    'nr-summer-multichannel-push': `### 🏆 Key Findings
 * **High Engagement Cohort**: App users with a score > 80 converted at **4.0%**, making up 75% of total push sales.
 * **iOS CTR Peak**: Apple devices registered a **15.0% direct click rate** compared to Android's 10%.
 
@@ -246,7 +269,7 @@ function getMockSummary(id, channel) {
 * **Clean Device Keys**: Set up automatic token deletion for users inactive for > 90 days.
 * **iOS Banner Focus**: Promote app store reviews on high-conversion iOS user streams.`,
 
-    'dq-summer-multichannel-sms': `### 🏆 Key Findings
+    'nr-summer-multichannel-sms': `### 🏆 Key Findings
 * **High Open Rate**: Text message marketing achieved a **30.0% read rate**, the fastest activation speed across all channels.
 * **Revenue Yield**: Generated **1,600 conversions** from an active list size of 80,000 users.
 
@@ -258,8 +281,8 @@ function getMockSummary(id, channel) {
 * **Verify Shortcodes**: Pre-register shortcode headers with major carriers.
 * **Add Personalization**: Insert custom customer first name parameters to reduce spam markings.`,
     
-    'dq-welcome-email': `### 🏆 Key Findings
-* **Variant A Won**: The subject line **"Get a FREE Blizzard Ice Cream! 🍦 Alert"** significantly outperformed Variant B with a **12.0% CTR** versus 10.0%, reaching statistical significance (98.6% confidence).
+    'nr-welcome-email': `### 🏆 Key Findings
+* **Variant A Won**: The subject line **"Your Welcome Reward Is Ready"** significantly outperformed Variant B with a **12.0% CTR** versus 10.0%, reaching statistical significance (98.6% confidence).
 * **VIP Gold Cohort Lead**: The **VIP Gold segment** (Z-Score: 4.8) drove **6,013 conversions** with a massive **25.0% click-through rate**, confirming high offer affinity for loyal segments.
 
 ### ⚠️ Performance Red Flags
@@ -270,8 +293,8 @@ function getMockSummary(id, channel) {
 * **Promote Gold Logic**: Scale the Gold tier template layout to active Silver tier accounts as a points-accelerator promo.
 * **Fix Default Experience**: Redesign the generic fallback copy by inserting localized city parameters and adding an secondary app onboarding checklist to reduce unsubscribe rates.`,
     
-    'dq-points-boost-push': `### 🏆 Key Findings
-* **Variant A Won**: The copy variant **"Get double points on all Blizzards today! 🍦"** drove a **16.0% open rate** compared to 14.0% for the high-friction Variant B, capturing 96.6% statistical significance.
+    'nr-points-boost-push': `### 🏆 Key Findings
+* **Variant A Won**: The copy variant **"Get double points on summer picks today"** drove a **16.0% open rate** compared to 14.0% for the high-friction Variant B, capturing 96.6% statistical significance.
 * **Segment Affinity**: High Engagement segment (score > 80) drove a strong **23.0% CTR** and a **4.0% conversion rate**.
 
 ### ⚠️ Performance Red Flags
@@ -282,8 +305,8 @@ function getMockSummary(id, channel) {
 * **Cap Frequency**: Implement a push frequency limit (frequency capping) of 1 promo push per 48 hours for the low-engagement cohort.
 * **Android Token Audit**: Trigger automatic token validation cleanup actions on Android app launch to fix push delivery drops.`,
     
-    'dq-app-download-iam': `### 🏆 Key Findings
-* **Variant A Won**: **"Get App & Unlock Free Ice Cream 🍦"** secured a **30.0% CTR**, proving that direct incentive messaging beats feature-driven copy ("Faster Rewards") by an 8% margin.
+    'nr-app-download-iam': `### 🏆 Key Findings
+* **Variant A Won**: **"Get the app and unlock a welcome reward"** secured a **30.0% CTR**, proving that direct incentive messaging beats feature-driven copy ("Faster Rewards") by an 8% margin.
 * **Mobile Web Dominance**: Mobile web referrals drove a massive **34.0% click-through rate** and **18.0% app conversion rate**, showing high landing-page alignment.
 
 ### ⚠️ Performance Red Flags
@@ -306,4 +329,3 @@ function getMockSummary(id, channel) {
 ### 🎯 Recommended Adjustments
 * **Implement Personalization**: Audit templates to replace static fallback blocks with dynamic Liquid variables.`;
 }
-

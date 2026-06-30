@@ -11,7 +11,6 @@ import {
   X,
   Terminal,
   Printer,
-  ChevronDown,
   RefreshCw
 } from 'lucide-react';
 
@@ -26,36 +25,14 @@ import {
 import Overview from './components/Overview';
 import Settings from './components/Settings';
 import AiExplorer from './components/AiExplorer';
-
-// Simple Markdown parser for modal view
-function parseMarkdown(text) {
-  if (!text) return '';
-  
-  let html = text
-    .replace(/^### (.*$)/gim, '<h4 style="font-size: 0.95rem; font-weight: 700; margin-top: 1rem; margin-bottom: 0.4rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.3rem;">$1</h4>')
-    .replace(/^## (.*$)/gim, '<h3 style="font-size: 1.1rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.6rem; color: var(--text-primary);">$1</h3>')
-    .replace(/^# (.*$)/gim, '<h2 style="font-size: 1.2rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.85rem; color: var(--text-primary);">$1</h2>');
-  
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
-  html = html.replace(/^\* (.*$)/gim, '<li style="margin-left: 1.1rem; margin-bottom: 0.3rem; list-style-type: square; color: var(--text-primary); font-size: 0.85rem;">$1</li>');
-  
-  html = html.replace(/((?:<li.*?>.*?<\/li>\s*)+)/g, '<ul style="margin-bottom: 0.75rem;">$1</ul>');
-  
-  html = html.split('\n\n').map(p => {
-    if (p.trim().startsWith('<h') || p.trim().startsWith('<ul') || p.trim().startsWith('<li')) {
-      return p;
-    }
-    return `<p style="margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45;">${p}</p>`;
-  }).join('\n');
-
-  return html;
-}
+import SourceBadge from './components/SourceBadge';
+import ContextHint from './components/ContextHint';
+import { parseMarkdownToSafeHtml } from './utils/safeHtml';
 
 export default function App() {
   const [apiKey, setApiKey] = useState('');
   const [campaigns, setCampaigns] = useState([]);
-  const [activeCampaignId, setActiveCampaignId] = useState('dq-welcome-email');
+  const [activeCampaignId, setActiveCampaignId] = useState('nr-welcome-email');
   const [toast, setToast] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   
@@ -110,24 +87,18 @@ export default function App() {
     }
   };
 
-  // Toggle Theme with forced 1-second delay
   const toggleTheme = () => {
+    const targetTheme = theme === 'dark' ? 'light' : 'dark';
     setIsChangingTheme(true);
-    setTimeout(() => {
-      const targetTheme = theme === 'dark' ? 'light' : 'dark';
-      setTheme(targetTheme);
-      setIsChangingTheme(false);
-      triggerToast(`Switched theme to ${targetTheme === 'dark' ? 'Dark Mode' : 'Light Mode'}`);
-    }, 1000);
+    setTheme(targetTheme);
+    setIsChangingTheme(false);
+    triggerToast(`Switched theme to ${targetTheme === 'dark' ? 'Dark Mode' : 'Light Mode'}`);
   };
 
-  // Toggle Settings panel with forced 1-second delay
   const handleToggleSettings = () => {
     setIsTogglingSettings(true);
-    setTimeout(() => {
-      setShowSettings(prev => !prev);
-      setIsTogglingSettings(false);
-    }, 1000);
+    setShowSettings(prev => !prev);
+    setIsTogglingSettings(false);
   };
 
   // Save Report snapshot handler
@@ -139,22 +110,19 @@ export default function App() {
     try {
       const updated = saveReportSnapshot(campaignName, stats, postMortemText);
       setSavedReports(updated);
-      triggerToast(`Snapshot of "${campaignName}" saved to archive!`);
+      triggerToast(`Snapshot for "${campaignName}" saved or updated.`);
     } catch (err) {
       triggerToast(err.message || "Failed to save report.");
     }
   };
 
-  // Delete Report snapshot handler with forced 1-second delay
   const handleDeleteReport = (reportId, e) => {
     e.stopPropagation();
     setDeletingId(reportId);
-    setTimeout(() => {
-      const updated = deleteSavedReport(reportId);
-      setSavedReports(updated);
-      setDeletingId(null);
-      triggerToast("Snapshot deleted from history archive.");
-    }, 1000);
+    const updated = deleteSavedReport(reportId);
+    setSavedReports(updated);
+    setDeletingId(null);
+    triggerToast("Snapshot deleted from history archive.");
   };
 
   // Link and Sync Braze campaign ID directly to local workspace campaign
@@ -164,7 +132,8 @@ export default function App() {
       setCampaigns(prev => {
         const updatedList = prev.map(c => {
           if (c.id === campaignId) {
-            const { brazeCampaignId, ...rest } = c;
+            const rest = { ...c };
+            delete rest.brazeCampaignId;
             return {
               ...rest,
               lastSynced: 'Not Linked'
@@ -261,11 +230,14 @@ export default function App() {
             </div>
           )}
 
-          {/* Theme Switcher Button with spinner delay */}
+          {activeCampaign && <SourceBadge type={activeCampaign.sourceType} />}
+
+          {/* Theme Switcher Button */}
           <button
             onClick={toggleTheme}
             disabled={isChangingTheme}
             className="btn btn-secondary"
+            data-coach-tip="Toggle the dashboard theme if you are reviewing reports in a bright room."
             style={{
               padding: '0.45rem',
               borderRadius: '6px',
@@ -277,6 +249,7 @@ export default function App() {
               cursor: 'pointer'
             }}
             title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            aria-label={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
             {isChangingTheme ? (
               <RefreshCw size={15} className="spin" />
@@ -290,14 +263,15 @@ export default function App() {
           {/* API Mode Indicator */}
           <div className={`api-badge ${apiKey ? 'connected' : 'simulated'}`} style={{ padding: '0.4rem 0.85rem', fontSize: '0.78rem' }}>
             <span className="indicator"></span>
-            <span>{apiKey ? 'Live API Mode' : 'Sandbox Demo Mode'}</span>
+            <span>{apiKey ? 'Client Key Fallback' : 'Server Proxy / Demo'}</span>
           </div>
 
-          {/* Toggle Settings Button with spinner delay */}
+          {/* Toggle Settings Button */}
           <button
             onClick={handleToggleSettings}
             disabled={isTogglingSettings}
             className={`btn ${showSettings ? 'btn-primary' : 'btn-secondary'}`}
+            data-coach-tip="Open this to add API keys, connect Braze, import CSVs, or reset demo data."
             style={{
               padding: '0.4rem 0.85rem',
               fontSize: '0.85rem',
@@ -313,7 +287,7 @@ export default function App() {
             ) : (
               <SettingsIcon size={14} className={showSettings ? 'spin' : ''} />
             )}
-            {isTogglingSettings ? 'Syncing...' : showSettings ? 'Close' : 'Settings'}
+            {isTogglingSettings ? 'Opening...' : showSettings ? 'Close' : 'Settings'}
           </button>
         </div>
       </header>
@@ -343,6 +317,9 @@ export default function App() {
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Configure API keys, upload campaign performance logs, or fetch live Braze analytics.</p>
               </div>
             </div>
+            <ContextHint id="settings-hint" title="Start Here">
+              Want this to feel real? Add server-side keys in Vercel for production. For a quick local run, use the fallback fields, drop in a CSV, or connect a Braze campaign ID.
+            </ContextHint>
             <Settings 
               apiKey={apiKey} 
               setApiKey={setApiKey} 
@@ -417,7 +394,7 @@ export default function App() {
 
                 <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    Browse past saved post-deployment report snapshots. Click "View" to open archived AI summaries and conversion statistics.
+                    Browse saved post-deployment report snapshots. Re-saving the same report updates the existing archive item instead of creating a duplicate.
                   </p>
                   
                   {savedReports.length > 0 ? (
@@ -474,7 +451,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-color)', borderRadius: 'var(--border-radius-md)', fontSize: '0.85rem' }}>
-                      No saved report snapshots found in the archive library. Click "Save Snapshot" at the top of the summary report to archive campaign metrics.
+                      No saved report snapshots found in the archive library. Save a report to archive it here; saving it again later will update the existing item.
                     </div>
                   )}
                 </div>
@@ -575,6 +552,7 @@ export default function App() {
               <div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.5rem' }}>AI Post-Mortem Summary</div>
                 <div 
+                  className="markdown-output"
                   style={{
                     padding: '1rem',
                     backgroundColor: 'var(--bg-tertiary)',
@@ -583,7 +561,7 @@ export default function App() {
                     maxHeight: '220px',
                     overflowY: 'auto'
                   }}
-                  dangerouslySetInnerHTML={{ __html: parseMarkdown(activeReportModal.postMortem) }}
+                  dangerouslySetInnerHTML={{ __html: parseMarkdownToSafeHtml(activeReportModal.postMortem) }}
                 />
               </div>
             </div>

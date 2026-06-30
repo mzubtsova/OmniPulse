@@ -1,18 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Sparkles, 
   Info, 
   AlertTriangle, 
   ShieldCheck, 
-  Mail, 
   Smartphone, 
-  MessageSquare, 
   Monitor, 
   Layers, 
   Scale, 
   RefreshCw,
-  FileText,
-  CheckCircle2,
   Bug,
   AlertCircle,
   TrendingUp,
@@ -29,31 +25,9 @@ import {
 } from 'lucide-react';
 import { generateCampaignPostMortem, generateAnomalyExplanation } from '../services/gemini';
 import { calculateABStats } from '../utils/statsMath';
-
-// Custom Markdown parser for AI output
-function parseMarkdown(text) {
-  if (!text) return '';
-  
-  let html = text
-    .replace(/^### (.*$)/gim, '<h4 style="font-size: 0.95rem; font-weight: 700; margin-top: 1rem; margin-bottom: 0.4rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.3rem;">$1</h4>')
-    .replace(/^## (.*$)/gim, '<h3 style="font-size: 1.1rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.6rem; color: var(--text-primary);">$1</h3>')
-    .replace(/^# (.*$)/gim, '<h2 style="font-size: 1.2rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.85rem; color: var(--text-primary);">$1</h2>');
-  
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
-  html = html.replace(/^\* (.*$)/gim, '<li style="margin-left: 1.1rem; margin-bottom: 0.3rem; list-style-type: square; color: var(--text-primary); font-size: 0.85rem;">$1</li>');
-  
-  html = html.replace(/((?:<li.*?>.*?<\/li>\s*)+)/g, '<ul style="margin-bottom: 0.75rem;">$1</ul>');
-  
-  html = html.split('\n\n').map(p => {
-    if (p.trim().startsWith('<h') || p.trim().startsWith('<ul') || p.trim().startsWith('<li')) {
-      return p;
-    }
-    return `<p style="margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45;">${p}</p>`;
-  }).join('\n');
-
-  return html;
-}
+import SourceBadge from './SourceBadge';
+import ContextHint from './ContextHint';
+import { parseMarkdownToSafeHtml, sanitizeTemplateHtml } from '../utils/safeHtml';
 
 const ProgressRing = ({ percentage, label, color }) => {
   const radius = 52;
@@ -92,6 +66,21 @@ const ProgressRing = ({ percentage, label, color }) => {
       </div>
     </div>
   );
+};
+
+const TAB_HINTS = {
+  overview: {
+    title: 'Start With The Pulse Check',
+    body: 'Peek at the source badge, GA cards, AI summary, and risk ledger first. Got real data? Tap Link Braze Campaign or open Settings to import a CSV, then the dashboard becomes much more useful.'
+  },
+  sql: {
+    title: 'Ask It Like An Analyst',
+    body: 'Try a plain-English question like “which segment converted best?” OmniPulse drafts SQL and a result table from the loaded campaign now; later, plug in a warehouse export to run it on real event rows.'
+  },
+  ga: {
+    title: 'Follow The Click Trail',
+    body: 'Add GA4 credentials in the panel below, then compare CRM clicks with GA sessions and purchases. Big gaps usually mean landing-page friction, broken UTMs, or attribution drift.'
+  }
 };
 
 export default function Overview({ campaign, apiKey, onSaveReport, activeTab, setActiveTab, onSyncCampaign }) {
@@ -153,15 +142,24 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
   const [anomalyInsights, setAnomalyInsights] = useState({});
   const [loadingInsight, setLoadingInsight] = useState(null);
   const [activeChannelFilter, setActiveChannelFilter] = useState('all');
+  const [dismissedHints, setDismissedHints] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('omnipulse_dismissed_hints') || '{}');
+    } catch {
+      return {};
+    }
+  });
 
   // Project active campaign stats based on channel filter selection
-  const activeStats = campaign.channels && activeChannelFilter !== 'all' && campaign.channelStats?.[activeChannelFilter]
-    ? {
-        ...campaign,
-        ...campaign.channelStats[activeChannelFilter],
-        channel: activeChannelFilter
-      }
-    : campaign;
+  const activeStats = useMemo(() => (
+    campaign.channels && activeChannelFilter !== 'all' && campaign.channelStats?.[activeChannelFilter]
+      ? {
+          ...campaign,
+          ...campaign.channelStats[activeChannelFilter],
+          channel: activeChannelFilter
+        }
+      : campaign
+  ), [campaign, activeChannelFilter]);
 
   const ga = activeStats.gaStats || {
     sessions: 0,
@@ -264,18 +262,12 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
     };
     fetchReport();
     return () => { active = false; };
-  }, [campaign.id, activeChannelFilter, apiKey]);
+  }, [activeStats, campaign.id, activeChannelFilter, apiKey]);
 
-  // Anomaly diagnostic with forced 1-second delay
   const handleExplainAnomaly = async (clientKey, clientName, rate) => {
     setLoadingInsight(clientKey);
-    const start = Date.now();
     try {
       const insight = await generateAnomalyExplanation(clientName, rate, overallRate, apiKey);
-      const elapsed = Date.now() - start;
-      if (elapsed < 1000) {
-        await new Promise(r => setTimeout(r, 1000 - elapsed));
-      }
       setAnomalyInsights(prev => ({ ...prev, [clientKey]: insight }));
     } catch {
       setAnomalyInsights(prev => ({ ...prev, [clientKey]: "Failed to diagnose anomaly." }));
@@ -284,100 +276,93 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
     }
   };
 
-  // 1-second delay handlers for action buttons
   const triggerSaveReport = () => {
     setIsSaving(true);
-    setTimeout(() => {
-      let reportName = activeStats.name;
-      let reportStats = {
-        sent: activeStats.sent,
-        opens: activeStats.opens,
-        clicks: activeStats.clicks,
-        conversions: activeStats.conversions,
-        bounces: activeStats.bounces,
-        unsubscribes: activeStats.unsubscribes
+    let reportName = activeStats.name;
+    let reportStats = {
+      sent: activeStats.sent,
+      opens: activeStats.opens,
+      clicks: activeStats.clicks,
+      conversions: activeStats.conversions,
+      bounces: activeStats.bounces,
+      unsubscribes: activeStats.unsubscribes
+    };
+    let reportText = postMortem;
+
+    if (activeTab === 'sql') {
+      reportName = `[SQL Report] ${campaign.name}`;
+      reportText = `### SQL CRM Database & Benchmark Ledger\n\n` + 
+        `* **Total Benchmarks Evaluated**: ${campaign.branches?.length || 0}\n` +
+        `* **Campaign Version**: ${campaign.version}\n` +
+        `* **Data Source**: ${campaign.sourceType || 'seed'}\n\n` +
+        `#### Active Segment Attributions:\n` +
+        (campaign.branches?.map(b => `* **${b.name}** (${b.expression}): Triggered: ${b.triggered.toLocaleString()} | Click Rate: ${b.ctr}% | Conversion Rate: ${b.cvr}%`).join('\n') || 'No segments configured.');
+    } else if (activeTab === 'ga') {
+      reportName = `[GA Report] ${campaign.name}`;
+      reportStats = {
+        sent: campaign.clicks,
+        opens: campaign.gaStats?.sessions || 0,
+        clicks: campaign.gaStats?.purchases || 0,
+        conversions: campaign.gaStats?.purchases || 0,
+        bounces: Math.round((campaign.gaStats?.sessions || 0) * ((campaign.gaStats?.bounceRate || 0) / 100)),
+        unsubscribes: 0
       };
-      let reportText = postMortem;
+      reportText = `### Google Analytics (GA4) Traffic & UTM Tracking Audit\n\n` +
+        `* **GA Sessions**: ${campaign.gaStats?.sessions?.toLocaleString() || 0}\n` +
+        `* **Target Purchases**: ${campaign.gaStats?.purchases?.toLocaleString() || 0}\n` +
+        `* **Session Bounce Rate**: ${campaign.gaStats?.bounceRate}%\n` +
+        `* **Site Load Speed**: ${campaign.gaStats?.loadTime}s (Avg: 2.0s)\n` +
+        `* **UTM Campaign Tracking Status**: ${auditedLinks.every(link => link.isValid) ? 'Valid' : 'Needs review'}\n` +
+        `* **Device Split Bounce Rate**: Mobile (${campaign.gaStats?.deviceSplit?.mobile?.bounceRate}%) vs. Desktop (${campaign.gaStats?.deviceSplit?.desktop?.bounceRate}%)`;
+    } else {
+      reportName = `[Full Report] ${campaign.name}`;
+    }
 
-      if (activeTab === 'sql') {
-        reportName = `[SQL Report] ${campaign.name}`;
-        reportText = `### SQL CRM Database & Benchmark Ledger\n\n` + 
-          `* **Total Benchmarks Evaluated**: ${campaign.branches?.length || 0}\n` +
-          `* **Campaign Version**: ${campaign.version}\n` +
-          `* **Deliverability Anomalies**: SPF/DKIM Alignment OK, ISP deviation analysis resolved.\n\n` +
-          `#### Active Segment Attributions:\n` +
-          (campaign.branches?.map(b => `* **${b.name}** (${b.expression}): Triggered: ${b.triggered.toLocaleString()} | Click Rate: ${b.ctr}% | Conversion Rate: ${b.cvr}%`).join('\n') || 'No segments configured.');
-      } else if (activeTab === 'ga') {
-        reportName = `[GA Report] ${campaign.name}`;
-        reportStats = {
-          sent: campaign.clicks,
-          opens: campaign.gaStats?.sessions || 0,
-          clicks: campaign.gaStats?.purchases || 0,
-          conversions: campaign.gaStats?.purchases || 0,
-          bounces: Math.round((campaign.gaStats?.sessions || 0) * ((campaign.gaStats?.bounceRate || 0) / 100)),
-          unsubscribes: 0
-        };
-        reportText = `### Google Analytics (GA4) Traffic & UTM Tracking Audit\n\n` +
-          `* **GA Sessions**: ${campaign.gaStats?.sessions?.toLocaleString() || 0}\n` +
-          `* **Target Purchases**: ${campaign.gaStats?.purchases?.toLocaleString() || 0}\n` +
-          `* **Session Bounce Rate**: ${campaign.gaStats?.bounceRate}%\n` +
-          `* **Site Load Speed**: ${campaign.gaStats?.loadTime}s (Avg: 2.0s)\n` +
-          `* **UTM Campaign Tracking Status**: Valid\n` +
-          `* **Device Split Bounce Rate**: Mobile (${campaign.gaStats?.deviceSplit?.mobile?.bounceRate}%) vs. Desktop (${campaign.gaStats?.deviceSplit?.desktop?.bounceRate}%)`;
-      } else {
-        reportName = `[Full Report] ${campaign.name}`;
-      }
-
-      onSaveReport(reportName, reportStats, reportText);
-      setIsSaving(false);
-    }, 1000);
+    onSaveReport(reportName, reportStats, reportText);
+    setIsSaving(false);
   };
 
   const triggerPrintReport = () => {
     setIsPrinting(true);
-    setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-    }, 1000);
+    window.print();
+    setIsPrinting(false);
   };
 
   const triggerExportJson = () => {
     setIsExporting(true);
-    setTimeout(() => {
-      let exportObj = activeStats;
-      let exportName = `${activeStats.id}-report.json`;
+    let exportObj = activeStats;
+    let exportName = `${activeStats.id}-report.json`;
 
-      if (activeTab === 'sql') {
-        exportObj = {
-          reportType: 'sql_crm_database',
-          campaignId: campaign.id,
-          campaignName: campaign.name,
-          version: campaign.version,
-          benchmarks: campaign.branches || [],
-          deliverability: campaign.deliverability || {},
-          failures: getFailuresAndRisks()
-        };
-        exportName = `${campaign.id}-sql-report.json`;
-      } else if (activeTab === 'ga') {
-        exportObj = {
-          reportType: 'google_analytics_diagnostics',
-          campaignId: campaign.id,
-          campaignName: campaign.name,
-          gaStats: campaign.gaStats || {},
-          speedSplit: campaign.gaStats?.deviceSplit || {}
-        };
-        exportName = `${campaign.id}-ga-report.json`;
-      }
+    if (activeTab === 'sql') {
+      exportObj = {
+        reportType: 'sql_crm_database',
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        version: campaign.version,
+        benchmarks: campaign.branches || [],
+        deliverability: campaign.deliverability || {},
+        failures: getFailuresAndRisks()
+      };
+      exportName = `${campaign.id}-sql-report.json`;
+    } else if (activeTab === 'ga') {
+      exportObj = {
+        reportType: 'google_analytics_diagnostics',
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        gaStats: campaign.gaStats || {},
+        speedSplit: campaign.gaStats?.deviceSplit || {}
+      };
+      exportName = `${campaign.id}-ga-report.json`;
+    }
 
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", exportName);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-      setIsExporting(false);
-    }, 1000);
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", exportName);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    setIsExporting(false);
   };
 
   const getBranchBadgeStyle = (ctr) => {
@@ -478,7 +463,12 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
       return (
         <div style={{ position: 'relative', width: '100%', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-md)', overflow: 'hidden', backgroundColor: '#fff' }}>
           <div className="hotspot-container" style={{ position: 'relative', height: '360px', width: '100%' }}>
-            <iframe title="Attribution Frame" srcDoc={activeStats.templateHtml} style={{ width: '100%', height: '100%', border: 'none' }} />
+            <iframe
+              title="Attribution Frame"
+              sandbox=""
+              srcDoc={sanitizeTemplateHtml(activeStats.templateHtml)}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+            />
             {activeStats.hotspots?.map(spot => (
               <div
                 key={spot.id}
@@ -533,8 +523,8 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                <span style={{ width: '16px', height: '16px', backgroundColor: 'var(--accent-purple)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifySelf: 'center', color: '#fff', fontSize: '0.6rem', fontWeight: 'bold', justifyContent: 'center' }}>DQ</span>
-                <strong>Dairy Queen App</strong>
+                <span style={{ width: '16px', height: '16px', backgroundColor: 'var(--accent-purple)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifySelf: 'center', color: '#fff', fontSize: '0.6rem', fontWeight: 'bold', justifyContent: 'center' }}>NR</span>
+                <strong>Nimbus Retail App</strong>
               </div>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Now</span>
             </div>
@@ -542,7 +532,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
               {activeStats.subjectLine}
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.3' }}>
-              {activeStats.pushBody || "Beat the heat with a free small Blizzard on us. Tap to load reward in app."}
+              {activeStats.pushBody || "Tap to load today’s member reward in the app."}
             </div>
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Push Click Action CTR: <strong>{activeStats.clicks ? ((activeStats.clicks / activeStats.sent) * 100).toFixed(1) : 0}%</strong></span>
@@ -589,7 +579,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
               marginBottom: '0.5rem',
               border: '1px solid rgba(255,255,255,0.05)'
             }}>
-              {activeStats.smsBody || "Dairy Queen: Summer is here! Click to claim your FREE small Blizzard now: dq.com/s-free (Reply STOP to unsub)"}
+              {activeStats.smsBody || "Nimbus Retail: Summer rewards are live. Tap to claim today’s member offer: example.com/reward (Reply STOP to unsub)"}
             </div>
             <div style={{ fontSize: '0.65rem', color: '#8e8e93', alignSelf: 'center', marginBottom: 'auto' }}>Text Message &bull; Today 8:00 PM</div>
           </div>
@@ -672,24 +662,24 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
       });
     }
 
-    // Blacklist validation (Simulated audit based on deliveries)
+    // Reputation validation requires a backend source; this is an inferred risk prompt.
     const isAnomalyExist = deliverabilityKeys.some(k => (campaign.deliverability[k]?.rate - overallRate) <= -4.0);
     if (isAnomalyExist) {
       issues.push({
-        id: 'blacklist-sorbs',
-        type: 'Domain Blacklist Alert',
+        id: 'reputation-review',
+        type: 'Reputation Review Needed',
         severity: 'warning',
-        message: 'Sender IP registered soft block listing on SORBS database. Review bounce classifications.'
+        message: 'Placement drop detected. Connect a reputation provider before treating this as a confirmed blacklist event.'
       });
     }
 
-    // Mock HTML/CSS layout checks
+    // Authentication checks require DNS access from a backend connector.
     if (activeStats.channel === 'email') {
       issues.push({
         id: 'auth-status',
-        type: 'SPF/DKIM Validation',
-        severity: 'resolved',
-        message: 'Domain SPF, DKIM, and DMARC record alignment checked: Active and Passing.'
+        type: 'Authentication Check',
+        severity: 'warning',
+        message: 'SPF, DKIM, and DMARC checks are not verified in-browser. Configure a server-side DNS audit before production sign-off.'
       });
     }
 
@@ -716,14 +706,20 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
   const deliverabilityKeys = getFilteredDeliverabilityKeys();
 
   const failuresList = getFailuresAndRisks();
+  const activeHint = TAB_HINTS[activeTab];
+  const dismissHint = (id) => {
+    const updated = { ...dismissedHints, [id]: true };
+    setDismissedHints(updated);
+    localStorage.setItem('omnipulse_dismissed_hints', JSON.stringify(updated));
+  };
 
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
       {/* 📊 Tab Selector & Actions Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>
+      <div className="report-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>
         {/* Tab Selector Bar */}
-        <div style={{
+        <div className="report-tabs" style={{
           display: 'flex',
           gap: '0.5rem',
           backgroundColor: 'var(--bg-secondary)',
@@ -735,13 +731,14 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
-          flex: '1',
-          maxWidth: 'fit-content'
+          flex: '1 1 420px',
+          maxWidth: '100%'
         }}>
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
             className={`btn ${activeTab === 'overview' ? 'btn-primary' : 'btn-secondary'}`}
+            data-coach-tip="Start here for the executive read: health, AI notes, risks, and saved reports."
             style={{
               fontSize: '0.85rem',
               fontWeight: '600',
@@ -757,6 +754,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
             type="button"
             onClick={() => setActiveTab('sql')}
             className={`btn ${activeTab === 'sql' ? 'btn-primary' : 'btn-secondary'}`}
+            data-coach-tip="Use this when you want to ask campaign questions and see draft SQL."
             style={{
               fontSize: '0.85rem',
               fontWeight: '600',
@@ -772,6 +770,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
             type="button"
             onClick={() => setActiveTab('ga')}
             className={`btn ${activeTab === 'ga' ? 'btn-primary' : 'btn-secondary'}`}
+            data-coach-tip="Use this to compare campaign clicks with GA4 sessions, purchases, and UTM health."
             style={{
               fontSize: '0.85rem',
               fontWeight: '600',
@@ -786,11 +785,12 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
         </div>
 
         {/* Global Export/Save/Print Actions */}
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        <div className="report-actions" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           <button
             onClick={triggerSaveReport}
             className="btn btn-secondary"
             disabled={isSaving}
+            data-coach-tip="Save the current report. If this report already exists, OmniPulse updates it instead of duplicating it."
             style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', borderRadius: '6px' }}
             title="Save snapshot of current tab report to archive"
           >
@@ -801,6 +801,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
             onClick={triggerPrintReport}
             className="btn btn-secondary"
             disabled={isPrinting}
+            data-coach-tip="Use this when you want a PDF-style handoff for stakeholders."
             style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', borderRadius: '6px' }}
             title="Print report or export as PDF"
           >
@@ -811,6 +812,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
             onClick={triggerExportJson}
             className="btn btn-secondary"
             disabled={isExporting}
+            data-coach-tip="Export the loaded campaign metrics and inferred diagnostics as JSON."
             style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', borderRadius: '6px' }}
             title="Export metrics as JSON file"
           >
@@ -820,15 +822,24 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
         </div>
       </div>
 
+      {activeHint && !dismissedHints[activeTab] && (
+        <ContextHint id={activeTab} title={activeHint.title} onDismiss={dismissHint}>
+          {activeHint.body}
+        </ContextHint>
+      )}
+
       {activeTab === 'overview' && (
         <>
           {/* Executive Campaign Title Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem', marginBottom: '0.5rem' }}>
+          <div className="campaign-title-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem', marginBottom: '0.5rem' }}>
             <div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: '700' }}>Campaign Executive Summary</h2>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-                Status: <strong style={{ color: 'var(--success)' }}>Report Finalized</strong> &bull; Synced {campaign.lastSynced}
-              </p>
+              <div className="summary-status-row" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', flex: '1 1 210px', minWidth: 0 }}>
+                  Status: <strong style={{ color: 'var(--success)' }}>Report Finalized</strong> &bull; Synced {campaign.lastSynced}
+                </p>
+                <SourceBadge type={campaign.sourceType} />
+              </div>
             </div>
 
             {/* Braze Link & Sync Controls */}
@@ -889,8 +900,9 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
                   ) : (
                     <button
                       onClick={() => setIsLinking(true)}
-                      className="btn btn-secondary"
-                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', borderRadius: '6px' }}
+                    className="btn btn-secondary"
+                    data-coach-tip="Connect this local workspace item to a Braze Campaign ID for live campaign totals."
+                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', borderRadius: '6px' }}
                     >
                       <Link size={12} />
                       Link Braze Campaign
@@ -971,9 +983,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
                     <Sparkles size={14} style={{ color: 'var(--accent-primary)' }} />
                     AI Campaign Post-Mortem Analysis
                   </h3>
-                  <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', borderRadius: '9999px', backgroundColor: 'rgba(124,58,237,0.1)', color: 'var(--accent-primary)', fontWeight: '600' }}>
-                    Gemini Flash
-                  </span>
+                  <SourceBadge type="ai" label="AI Draft" compact />
                 </div>
 
                 {loadingReport ? (
@@ -985,8 +995,9 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
                   </div>
                 ) : (
                   <div 
+                    className="markdown-output"
                     style={{ flex: 1, paddingRight: '0.4rem' }}
-                    dangerouslySetInnerHTML={{ __html: parseMarkdown(mainReport) }}
+                    dangerouslySetInnerHTML={{ __html: parseMarkdownToSafeHtml(mainReport) }}
                   />
                 )}
               </div>
@@ -1025,16 +1036,16 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
                       🛡️ Audited Failure & Risk Dimensions
                     </strong>
                     <p style={{ marginBottom: '0.4rem' }}>
-                      OmniPulse continuously parses your database logs to verify campaign integrity across key risk vectors:
+                      OmniPulse checks the metrics currently loaded into this workspace and labels any inferred checks clearly:
                     </p>
                     <p style={{ marginBottom: '0.4rem' }}>
                       * <strong>Deliverability Placement</strong>: Detects ISP-specific placement drops below standard thresholds (e.g. Yahoo or Outlook filter triggers).
                     </p>
                     <p style={{ marginBottom: '0.4rem' }}>
-                      * <strong>Authentication Status</strong>: Verifies alignment of SPF, DKIM, and DMARC keys on outbound assets.
+                      * <strong>Authentication Status</strong>: Reserved for server-side DNS checks when a deliverability connector is configured.
                     </p>
                     <p style={{ marginBottom: '0.4rem' }}>
-                      * <strong>Domain Blacklists</strong>: Checks sender IP reputation against real-time blackhole lists like SORBS.
+                      * <strong>Domain Reputation</strong>: Flags suspicious placement drops today; real-time blocklist lookups require a backend reputation provider.
                     </p>
                     <p>
                       * <strong>Segment Conversions & Churn</strong>: Flags critical unsubscribe thresholds and hard bounce opt-outs.
@@ -1108,8 +1119,9 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
                   AI Recommended Optimization Adjustments
                 </h3>
                 <div 
+                  className="markdown-output"
                   style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}
-                  dangerouslySetInnerHTML={{ __html: parseMarkdown(adjustments.trim()) }}
+                  dangerouslySetInnerHTML={{ __html: parseMarkdownToSafeHtml(adjustments.trim()) }}
                 />
               </div>
             )}
@@ -1131,6 +1143,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Status: <strong style={{ color: 'var(--success)' }}>Report Finalized</strong> &bull; Synced {campaign.lastSynced}</p>
               <span className="api-badge" style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem', borderStyle: 'dashed' }}>Channel: {activeStats.channel?.toUpperCase()}</span>
+              <SourceBadge type={campaign.sourceType} compact />
             </div>
           </div>
           
@@ -1270,7 +1283,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
               ...(activeStats.channel !== 'sms' && activeStats.channel !== 'iam' ? [{ label: '3. Opened Messages', val: activeStats.opens, pct: ((activeStats.opens / delivered) * 100).toFixed(1) }] : []),
               { label: '4. Unique Clicks', val: activeStats.clicks, pct: ((activeStats.clicks / (activeStats.opens || delivered)) * 100).toFixed(1) },
               { label: '5. Segment Conversions', val: activeStats.conversions, pct: ((activeStats.conversions / activeStats.clicks) * 100).toFixed(1) }
-            ].map((stage, idx, arr) => {
+            ].map((stage, idx) => {
               const widthRatio = 100 - idx * 8;
               const safeVal = stage.val !== undefined && stage.val !== null ? stage.val : 0;
               return (
@@ -1367,14 +1380,14 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
           {renderClickmapFrame()}
         </div>
 
-        {/* Deliverability Warnings & Anomalies (Spam traps and Blacklists) */}
+        {/* Deliverability Warnings & Anomalies */}
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '0.95rem', fontWeight: '700' }}>
               {activeChannelFilter === 'all' ? 'Deliverability Placement Radar' : `${activeChannelFilter.toUpperCase()} Placement Radar`}
             </h3>
             
-            {/* IP Blacklist audit status */}
+            {/* Reputation connector status */}
             <span style={{ 
               display: 'inline-flex', 
               alignItems: 'center', 
@@ -1382,12 +1395,12 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
               fontSize: '0.68rem', 
               padding: '0.15rem 0.45rem', 
               borderRadius: '4px',
-              backgroundColor: failuresList.some(i => i.id === 'blacklist-sorbs') ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)',
-              border: `1px solid ${failuresList.some(i => i.id === 'blacklist-sorbs') ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}`,
-              color: failuresList.some(i => i.id === 'blacklist-sorbs') ? 'var(--warning)' : 'var(--success)'
+              backgroundColor: failuresList.some(i => i.id === 'reputation-review') ? 'rgba(245,158,11,0.08)' : 'rgba(6,182,212,0.08)',
+              border: `1px solid ${failuresList.some(i => i.id === 'reputation-review') ? 'rgba(245,158,11,0.2)' : 'rgba(6,182,212,0.2)'}`,
+              color: failuresList.some(i => i.id === 'reputation-review') ? 'var(--warning)' : 'var(--accent-cyan)'
             }}>
               <ShieldAlert size={10} />
-              {failuresList.some(i => i.id === 'blacklist-sorbs') ? 'SORBS BLOCKED' : 'IP BLACKLIST CLEAN'}
+              {failuresList.some(i => i.id === 'reputation-review') ? 'REVIEW NEEDED' : 'REPUTATION SOURCE NEEDED'}
             </span>
           </div>
           
@@ -1450,7 +1463,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
             onMouseLeave={() => setShowAbTooltip(false)}
           >
             <Scale size={14} style={{ color: 'var(--accent-secondary)' }} />
-            Bayesian Significance Curve Overlay
+            Significance Curve Overlay
             <Info size={12} style={{ color: 'var(--text-muted)', marginLeft: '0.2rem' }} />
           </h3>
           
@@ -1821,4 +1834,3 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
     </div>
   );
 }
-

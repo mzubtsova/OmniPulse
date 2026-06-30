@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, HelpCircle, Layers, AlertCircle } from 'lucide-react';
+import { Layers, AlertCircle } from 'lucide-react';
 
 export default function LogicAuditor({ campaign }) {
   const getBadgeStyle = (ctr) => {

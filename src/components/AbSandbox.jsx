@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { calculateABStats } from '../utils/statsMath';
-import { Scale, RefreshCw, Check, Info, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Info } from 'lucide-react';
 
 export default function AbSandbox({ campaign }) {
   // Local input states initialized with active campaign variants
@@ -17,7 +17,7 @@ export default function AbSandbox({ campaign }) {
       setSentB(campaign.variants.b.sent);
       setClicksB(campaign.channel === 'email' ? campaign.variants.b.opens : campaign.variants.b.clicks);
     }
-  }, [campaign.id]);
+  }, [campaign.id, campaign.channel, campaign.variants]);
 
   // Recalculate stats
   const stats = calculateABStats({
@@ -87,7 +87,7 @@ export default function AbSandbox({ campaign }) {
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: '700' }}>Bayesian A/B Sandbox</h3>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: '700' }}>A/B Significance Sandbox</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
               Modify values below to run custom simulation stress-tests on your variants.
             </p>

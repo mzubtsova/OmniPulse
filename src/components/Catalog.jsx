@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, MessageSquare, Smartphone, Monitor, Search, Layers, RefreshCw } from 'lucide-react';
+import { Mail, MessageSquare, Smartphone, Monitor, Search, Layers } from 'lucide-react';
 
 export default function Catalog({ campaigns, activeCampaignId, setActiveCampaignId }) {
   const [search, setSearch] = useState('');

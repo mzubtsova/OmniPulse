@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, HelpCircle, AlertTriangle, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
+import { Mail, AlertTriangle, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
 import { generateAnomalyExplanation } from '../services/gemini';
 
 export default function Deliverability({ campaign, apiKey }) {

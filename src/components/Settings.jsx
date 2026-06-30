@@ -10,8 +10,7 @@ import {
   EyeOff, 
   CloudLightning, 
   Link as LinkIcon, 
-  RefreshCw,
-  BarChart3
+  RefreshCw
 } from 'lucide-react';
 import { parseCsvCampaignLog, fetchBrazeCampaignStats } from '../services/dataStore';
 
@@ -149,22 +148,22 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns, onReset
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         <h3 style={{ fontSize: '1.05rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Key size={16} style={{ color: 'var(--accent-purple)' }} />
-          Gemini API Configuration
+          AI Report Configuration
         </h3>
         
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Configure your Google AI Studio API key to run active campaign performance audits, segment affinity reports, and deliverability diagnostic post-mortems.
+          For daily use, configure GEMINI_API_KEY on the server/Vercel project. The browser key field below is only a local fallback for private testing.
         </p>
 
         <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label" style={{ fontSize: '0.8rem' }}>Gemini API Key</label>
+            <label className="form-label" style={{ fontSize: '0.8rem' }}>Browser Fallback Gemini Key</label>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <input
               type={showKey ? 'text' : 'password'}
               className="form-input"
               value={apiKey}
               onChange={handleKeySave}
-              placeholder="Paste your API key here (AI Studio)"
+              placeholder="Optional local fallback key"
               style={{ paddingRight: '45px', fontSize: '0.9rem' }}
             />
             <button
@@ -195,7 +194,7 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns, onReset
         </h3>
         
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Link your Braze REST API credentials and enter a Campaign ID to pull live post-deployment open, click, and conversion statistics.
+          Production deployments should use BRAZE_API_KEY and BRAZE_REST_ENDPOINT server variables. Browser credentials are retained only for local testing.
         </p>
 
         <div className="grid-compact-2col">
@@ -215,14 +214,14 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns, onReset
           </div>
 
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>Braze REST API Key</label>
+            <label className="form-label" style={{ fontSize: '0.8rem' }}>Browser Fallback Braze Key</label>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <input
                 type={showBrazeKey ? 'text' : 'password'}
                 className="form-input"
                 value={brazeApiKey}
                 onChange={handleBrazeApiKeySave}
-                placeholder="Paste REST API Key"
+                placeholder="Optional local fallback key"
                 style={{ paddingRight: '45px', fontSize: '0.85rem' }}
               />
               <button
@@ -315,7 +314,7 @@ export default function Settings({ apiKey, setApiKey, onImportCampaigns, onReset
         </h3>
 
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Alternatively, upload standard campaign analytics exports (CSVs) to parse data and populate the clickmaps and dashboard reports.
+          Upload campaign analytics exports with name, channel, sent, opens, clicks, and conversions. OmniPulse validates quoted fields and labels inferred diagnostics clearly.
         </p>
 
         {/* Drag Drop Area */}
