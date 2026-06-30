@@ -142,13 +142,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
   const [anomalyInsights, setAnomalyInsights] = useState({});
   const [loadingInsight, setLoadingInsight] = useState(null);
   const [activeChannelFilter, setActiveChannelFilter] = useState('all');
-  const [dismissedHints, setDismissedHints] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('omnipulse_dismissed_hints') || '{}');
-    } catch {
-      return {};
-    }
-  });
+  const [dismissedHints, setDismissedHints] = useState({});
 
   // Project active campaign stats based on channel filter selection
   const activeStats = useMemo(() => (
@@ -708,9 +702,7 @@ export default function Overview({ campaign, apiKey, onSaveReport, activeTab, se
   const failuresList = getFailuresAndRisks();
   const activeHint = TAB_HINTS[activeTab];
   const dismissHint = (id) => {
-    const updated = { ...dismissedHints, [id]: true };
-    setDismissedHints(updated);
-    localStorage.setItem('omnipulse_dismissed_hints', JSON.stringify(updated));
+    setDismissedHints(prev => ({ ...prev, [id]: true }));
   };
 
   return (
