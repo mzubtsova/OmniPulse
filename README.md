@@ -86,7 +86,7 @@ flowchart TD
 * **Data Provenance Badges**: Labels reports as Demo Seed, Imported CSV, Live API, Simulated API, Inferred, or AI Draft so users know what can be trusted as source data.
 * **Contextual Workflow Hints**: Shows tab-specific guidance for Overview, SQL Details, GA Diagnostics, and Settings so new users know what to add and where.
 * **Filter Bars**: Filter statistics by Date Range, Channels (Email, Push, SMS, IAM), and Segment Cohorts.
-* **Tab-Specific Global Actions**: Consolidates Save Snapshot, Print, and JSON export buttons in the header, exporting full reports for Combined Overview, database benchmarks for SQL CRM Details, or bounce/device splits for GA4 Diagnostics.
+* **Tab-Specific Global Actions**: Consolidates Save Snapshot, Print, and JSON export buttons in the header, exporting full reports for Combined Overview, database benchmarks for SQL CRM Details, or inferred GA-style diagnostics.
 * **Report Archive Upserts**: Saves report snapshots to local storage and updates an existing report when the same report is saved again, avoiding duplicate archive cards.
 
 ### 2. Visual clickmap Attributions
@@ -105,7 +105,7 @@ flowchart TD
 
 ### 5. Deliverability Anomalies Radar & Ledger Hover Info
 * **ISP Open-rate Deviations**: Flags email clients (Gmail, Outlook, Yahoo) whose open rates drop significantly below the campaign average.
-* **Failures & Risk Audits Ledger**: Flags placement deviations, bounces, and branch underperformance from the loaded data. DNS authentication and reputation checks are marked as connector-required until a backend provider is configured.
+* **Failures & Risk Audits Ledger**: Flags placement deviations, bounces, and branch underperformance from the loaded data. DNS authentication, reputation checks, and verified GA4 sync are marked as connector-required until backend providers are configured.
 * **AI Anomaly Explainer**: One-click prompt requesting Gemini to draft likely ISP filtering reasons based on visible campaign metrics.
 
 ---
@@ -125,6 +125,8 @@ flowchart TD
 
 ### Local Run
 By default, the app runs with preloaded demo campaigns and clear source badges. CSV imports work locally; serverless Gemini/Braze routes require Vercel or equivalent API hosting.
+
+GA4-style diagnostics in the current UI are derived from loaded campaign records and labeled as inferred unless a future GA connector is added.
 
 1. Navigate to the directory:
    ```bash
